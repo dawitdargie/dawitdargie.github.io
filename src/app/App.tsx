@@ -485,7 +485,7 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
 
 // ─── HERO STACK LINE (ROBOT IMAGE + TRANSPARENT C/K) ─────────────────────────
 
-const ROBOT_IMG = "https://i.imghippo.com/files/FU2115Ycs.jpeg";
+const ROBOT_IMG = "/robot.jpeg";
 
 function StackLine({ color }: { color: string }) {
   return (
