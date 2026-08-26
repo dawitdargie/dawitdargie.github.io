@@ -4,8 +4,22 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  min-height: 100%;
-  margin: 0;
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
 }
+::selection {
+  background: #FF3B00;
+  color: #030303;
+}
+::-moz-selection {
+  background: #FF3B00;
+  color: #030303;
+}
+#home {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 4.5rem !important;
+    padding-bottom: 2rem !important;
+    justify-content: flex-start !important;
+  }

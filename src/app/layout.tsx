@@ -37,7 +37,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${unbounded.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className={`${unbounded.className} ${inter.className} ${jetbrainsMono.className}`}>
+      <body
+        suppressHydrationWarning
+        className={`${unbounded.className} ${inter.className} ${jetbrainsMono.className}`}
+      >
         {children}
       </body>
     </html>
