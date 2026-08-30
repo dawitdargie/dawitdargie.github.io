@@ -9,12 +9,44 @@ html, body {
   max-width: 100%;
 }
 ::selection {
-  background: #FF3B00;
-  color: #030303;
+  background: var(--accent, #FF3B00);
+  color: var(--bg, #030303);
 }
 ::-moz-selection {
-  background: #FF3B00;
-  color: #030303;
+  background: var(--accent, #FF3B00);
+  color: var(--bg, #030303);
+}
+
+/* ─── THEME TOKENS ─────────────────────────────────────────────
+   Dark = the original exact values (default, no visual change).
+   Light = "BLUEPRINT ON BONE" palette.
+──────────────────────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --bg: #030303;
+  --bg2: #070707;
+  --bg3: #0A0A0A;
+  --bg-rgb: 3, 3, 3;
+  --ink: #EBEBEB;
+  --ink-rgb: 235, 235, 235;
+  --accent: #FF3B00;
+  --accent-rgb: 255, 59, 0;
+  --accent-warm: #ff7700;
+  --cursor-a: #9AA0A6;
+  --cursor-b: #6B7280;
+}
+[data-theme="light"] {
+  --bg: #ffffff;
+  --bg2: #ffffff;
+  --bg3: #ffffff;
+  --bg-rgb: 244, 241, 232;
+  --ink: #171512;
+  --ink-rgb: 23, 21, 18;
+  --accent: #116ae6;
+  --accent-rgb: 99, 17, 230;
+  --accent-warm: #2f72d6;
+  --cursor-a: #454136;
+  --cursor-b: #8B857A;
 }
 #home {
     min-height: 0 !important;

@@ -26,7 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Unique Design Portfolio",
+  title: "Dawit Dargie | Full Stack Engineer",
   description: "Showcase your skills with a stunning, animation-rich portfolio designed for full stack developers.",
 };
 
@@ -37,6 +37,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${unbounded.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;400;700;900&family=Inter:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap"
+        />
+      </head>
       <body
         suppressHydrationWarning
         className={`${unbounded.className} ${inter.className} ${jetbrainsMono.className}`}

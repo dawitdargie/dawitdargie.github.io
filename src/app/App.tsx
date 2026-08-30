@@ -1,81 +1,133 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import Lenis from "lenis";
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "motion/react";
-import { SiReact, SiNextdotjs, SiTypescript, SiThreedotjs, SiNodedotjs, SiPython, SiGraphql, SiPostgresql, SiDocker, SiKubernetes, SiRedis, SiGo } from "react-icons/si";
+import { SiReact, SiNextdotjs, SiTypescript, SiNodedotjs, SiPython, SiPostgresql, SiDocker, SiKubernetes, SiGo, SiShopify } from "react-icons/si";
 import { FiCloud, FiClock, FiDollarSign, FiRefreshCw, FiAward } from "react-icons/fi";
+import { TbApi } from "react-icons/tb";
 import { FaLinkedinIn, FaGithub, FaInstagram, FaFacebookF, FaTelegram } from "react-icons/fa6";
 
 const SOCIALS = [
-  { name: "LinkedIn", href: "https://www.linkedin.com/in/dawitdargie", Icon: FaLinkedinIn },
+  { name: "LinkedIn", href: "https://www.linkedin.com/in/dawit-dargie-30b43b426", Icon: FaLinkedinIn },
   { name: "GitHub", href: "https://github.com/dawitdargie", Icon: FaGithub },
-  { name: "Instagram", href: "https://www.instagram.com/dawitdargie", Icon: FaInstagram },
-  { name: "Facebook", href: "https://www.facebook.com/dawitdargie", Icon: FaFacebookF },
+  { name: "Instagram", href: "https://www.instagram.com/dawitdargie1", Icon: FaInstagram },
+  { name: "Facebook", href: "https://web.facebook.com/profile.php?id=61588882831030", Icon: FaFacebookF },
   { name: "Telegram", href: "https://t.me/dawitdargie", Icon: FaTelegram },
 ];
 import type { IconType } from "react-icons";
 
+// ─── THEME ───────────────────────────────────────────────────────────────────
+
+type Theme = "dark" | "light";
+const ThemeContext = createContext<{ theme: Theme; toggleTheme: () => void }>({ theme: "dark", toggleTheme: () => {} });
+function useTheme() { return useContext(ThemeContext); }
+
+// "THEME SWITCH" — switch-style toggle (pill track + sliding knob).
+// Dark theme active  -> knob on the LEFT (click = switch to light)
+// Light theme active -> knob on the RIGHT (click = switch to dark)
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const light = theme === "light";
+  return (
+    <button
+      onClick={toggleTheme}
+      data-hover
+      role="switch"
+      aria-checked={light}
+      aria-label={light ? "Switch to dark theme" : "Switch to light theme"}
+      title={light ? "Dark mode" : "Light mode"}
+      className="relative shrink-0 z-[210] flex items-center transition-transform duration-300"
+      style={{ width: "39px", height: "23px", padding: "2.5px", margin: "-2.5px", background: "transparent", border: "none" }}
+    >
+      {/* one-shot click ripple */}
+      <motion.span
+        key={theme}
+        className="absolute rounded-full pointer-events-none"
+        style={{ left: "-1.5px", right: "-1.5px", top: "-1.5px", bottom: "-1.5px", border: "1.5px solid var(--accent)" }}
+        initial={{ scale: 0.4, opacity: 0.7 }}
+        animate={{ scale: 1.15, opacity: 0 }}
+        transition={{ duration: 0.55, ease: "easeOut" }}
+      />
+      {/* track — pinned to the original 34×18 pill, centered within the padded hit area */}
+      <span
+        className="absolute rounded-full"
+        style={{ width: "34px", height: "18px", left: "2.5px", top: "2.5px", border: "1.5px solid rgba(var(--ink-rgb),0.35)", background: "rgba(var(--ink-rgb),0.06)", transition: "border-color 0.35s ease, background 0.35s ease" }}
+      />
+      {/* sliding knob */}
+      <motion.span
+        className="absolute rounded-full"
+        style={{ width: "14px", height: "14px", top: "4px", left: "4px", background: "var(--accent)", boxShadow: "0 1px 3px rgba(0,0,0,0.35)" }}
+        animate={{ x: light ? 15 : 0 }}
+        transition={{ type: "spring", stiffness: 320, damping: 20 }}
+      />
+    </button>
+  );
+}
+
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
-const PROJECTS = [
+type Project = {
+  id: number;
+  title: string;
+  category: string;
+  tags: string[];
+  image: string;
+  accent: string;
+  short: string;
+  problem?: string; // optional "THE PROBLEM & SOLUTION" block (\n-separated lines)
+  what: string;
+  how: string;
+  use: string;
+  built: string;
+  live?: string; // deployed site URL — projects without a live site omit this
+  github: string;
+};
+
+const PROJECTS: Project[] = [
   {
     id: 1,
-    title: "CRYPTEX",
+    title: "PERFINSIGHT",
     category: "",
-    year: "2024",
-    tags: ["Next.js", "Solidity", "Web3"],
-    image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=900&h=560&fit=crop&auto=format",
-    accent: "#FF3B00",
-    short: "A real-time decentralized trading terminal with live order books, wallet-native auth, and sub-second price streaming across major DEXs.",
-    what: "CRYPTEX is a decentralized trading platform that lets users swap tokens, track live order books, and manage a portfolio from their own wallet — no account or custody required.",
-    how: "It connects directly to on-chain liquidity through smart-contract routers, streams prices over WebSockets, and signs every transaction client-side so keys never leave the user's device.",
-    use: "Connect a Web3 wallet, pick a token pair, review the live quote and slippage, then confirm the swap — positions and history update in real time on the dashboard.",
-    built: "Built with Next.js and TypeScript on the front end, Solidity contracts deployed to EVM chains, ethers.js for wallet interaction, and Redis-backed WebSocket channels for price streaming.",
-    link: "https://github.com/",
-  },
-  {
-    id: 2,
-    title: "LUMINA AI",
-    category: "",
-    year: "2024",
-    tags: ["React", "Python", "OpenAI"],
-    image: "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=900&h=560&fit=crop&auto=format",
-    accent: "#C8FF00",
-    short: "An AI writing studio that turns rough briefs into publish-ready articles, social threads, and product copy in your own brand voice.",
-    what: "LUMINA AI generates long-form articles, ad copy, and social content from a short brief, learning each brand's tone from examples you upload.",
-    how: "Prompts are assembled from your brief, selected tone profile, and retrieved brand examples, then streamed token-by-token from a language model pipeline with automatic fact-and-format post-processing.",
-    use: "Paste a topic or brief, choose a format and tone, hit generate, then edit inline and export to Markdown, HTML, or straight to your CMS.",
-    built: "React front end with a Python FastAPI backend, OpenAI models orchestrated through a queue-based worker system, PostgreSQL for projects and versions, and SSE for live streaming output.",
-    link: "https://github.com/",
+    tags: ["Golang", "Neon PostgreSQL", "Docker", "Render"],
+    image: "/perfinsight.webp",
+    accent: "var(--accent)",
+    short: "PerfInsight is a Go performance intelligence platform that turns application telemetry into actionable insights. showing where time goes, what's causing bottlenecks, and what to fix.",
+    problem: "THE PROBLEM: Knowing a Go service is slow isn't enough. developers need to know where, why, and what to fix, which raw telemetry and complex observability tools don't clearly provide.\nTHE SOLUTION: PerfInsight traces, analyzes, and explains request performance with evidence and suggested fixes.\nObserve → Analyze → Explain → Suggest a Fix",
+    what: "Traces requests and database operations.\nMeasures performance.\nDetects bottlenecks and common issues.\nExplains findings with evidence.\nSuggests fixes.",
+    how: "Go App + SDK → Collector → PostgreSQL → Analysis Engine → Report\n\nThe SDK collects telemetry, the collector stores it, and the analysis engine applies deterministic rules to identify and explain performance issues.",
+    use: "Install and instrument your Go application, generate traffic, then run an analysis request.\nSee the README for the complete usage instructions.",
+    built: "SDK - Instruments Go applications.\nCollector - Receives and stores telemetry.\nAnalysis Engine - Detects performance issues.\nCLI/API - Reports findings and suggested fixes.",
+    github: "https://github.com/dawitdargie/perfinsight",
   },
   {
     id: 3,
-    title: "NEXUS",
+    title: "HACKSHELF",
     category: "",
-    year: "2023",
     tags: ["WebSockets", "Redis", "Docker"],
-    image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=900&h=560&fit=crop&auto=format",
+    image: "hackshelf.webp",
     accent: "#6B2FFA",
     short: "A multiplayer workspace where distributed teams co-edit documents, whiteboards, and tasks with conflict-free real-time sync.",
     what: "NEXUS is a real-time collaboration hub where teams co-edit documents and boards simultaneously, seeing every teammate's cursor and changes instantly.",
     how: "Edits are captured as operations and synced over WebSockets using CRDT conflict resolution, fanned out through a Redis pub/sub layer so every client converges to the same state even after disconnects.",
     use: "Create a workspace, invite teammates with a share link, and start editing together — everything syncs live with full version history you can rewind at any time.",
     built: "Node.js WebSocket gateway, Redis pub/sub and presence tracking, Yjs CRDTs for conflict-free merging, React client canvas editor, all containerized with Docker Compose.",
-    link: "https://github.com/",
+    live: "https://example.com",
+    github: "https://github.com/",
   },
   {
     id: 4,
-    title: "ORBIT",
+    title: "SYSTEMLENS",
     category: "",
-    year: "2023",
-    tags: ["TypeScript", "PostgreSQL", "AWS"],
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=900&h=560&fit=crop&auto=format",
+    tags: ["TypeScript", "Next.js", "Mermaid.js", "GitHub & Groq APIs"],
+    image: "/systemlens.webp",
     accent: "#00D4FF",
-    short: "A product analytics platform that turns raw event streams into live funnels, retention curves, and revenue dashboards.",
-    what: "ORBIT ingests product events and turns them into real-time dashboards — funnels, retention cohorts, and revenue metrics — without writing SQL.",
-    how: "Events stream into a partitioned PostgreSQL warehouse via an ingestion API, where pre-aggregated rollup tables keep every chart query under 100ms no matter the volume.",
-    use: "Drop the tracking snippet into your app, watch events arrive live, then build dashboards by dragging metrics, filters, and date ranges onto customizable panels.",
-    built: "TypeScript end to end, Next.js dashboard with a custom charting layer, PostgreSQL with table partitioning and materialized views, deployed on AWS with Lambda ingest and CloudWatch alerting.",
-    link: "https://github.com/",
+    short: "SystemLens makes unfamiliar GitHub repositories easier to understand by turning complex codebases into clear architecture(with visual diagram), explanations, and code-grounded answers.",
+    problem: "THE PROBLEM: Understanding an unfamiliar codebase can take days, with hundreds of files and technical details that don't make sense to every audience.\nTHE SOLUTION: SystemLens analyzes a GitHub repository and turns it into structured, role-specific explanations, architecture diagrams, and code-grounded answers.\nAnalyze → Understand → Explore → Ask",
+    what: "Analyzes public GitHub repositories.\nMaps architecture, modules, tech stack, and data flow.\nExplains the system for CEOs, PMs, Developers, QA, and Customers.\nVisualizes architecture with interactive diagrams.\nAnswers questions using the actual codebase.",
+    how: "GitHub Repo → Repository Analysis → AI Understanding → Profile / Diagram / Chat\n\nIt fetches repository data through GitHub's API, extracts technical facts, uses AI to generate understanding, and grounds code questions in relevant source files.",
+    use: "Paste a public GitHub repository URL, click Analyze, choose a perspective, explore the architecture, or ask questions about the codebase.\nSee the README for complete setup and usage instructions.",
+    built: "Repository Analyzer - Fetches and extracts repository data.\nAI Engine - Generates profiles, explanations, and answers.\nSSE API - Streams analysis and AI responses in real time.\nCaching - Reduces repeated repository and AI requests.\nFrontend - Presents profiles, diagrams, and code chat.",
+    live: "https://systemlenss.vercel.app/",
+    github: "https://github.com/dawitdargie/systemlens",
   },
 ];
 
@@ -143,7 +195,7 @@ function FloatingCode() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden>
       {FLOATING_CODE.map((line, i) => (
-        <div key={i} className="absolute text-xs whitespace-nowrap" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(255,59,0,0.06)", left: `${(i * 13 + 5) % 88}%`, animation: `floatUp ${12 + i * 1.3}s linear infinite`, animationDelay: `${-i * 1.5}s` }}>
+        <div key={i} className="absolute text-xs whitespace-nowrap" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--accent-rgb),0.06)", left: `${(i * 13 + 5) % 88}%`, animation: `floatUp ${12 + i * 1.3}s linear infinite`, animationDelay: `${-i * 1.5}s` }}>
           {line}
         </div>
       ))}
@@ -213,7 +265,7 @@ function CustomCursor() {
       ly.current += (my.current - ly.current) * 0.45;
       if (lens.current) {
         lens.current.style.transform = `translate(${lx.current}px, ${ly.current}px) scale(${state === "click" ? 0.85 : state === "hover" ? 1.1 : 1})`;
-        lens.current.style.filter = state === "hover" ? "drop-shadow(0 0 12px rgba(255,59,0,0.8))" : "none";
+        lens.current.style.filter = state === "hover" ? "drop-shadow(0 0 12px rgba(var(--accent-rgb),0.8))" : "none";
       }
 
       // Proximity hover: trigger hover effects when an interactive element is
@@ -299,11 +351,11 @@ function CustomCursor() {
         }}
       >
         <svg viewBox="0 0 64 64" width="100%" height="100%" style={{ overflow: "visible" }}>
-          <path d="M38 38 L 54 54" stroke="#9AA0A6" strokeWidth="6" strokeLinecap="round" />
-          <path d="M38 38 L 54 54" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" />
-          <circle cx="28" cy="28" r="20" fill="none" stroke="#9AA0A6" strokeWidth="4" />
-          <circle cx="28" cy="28" r="17" fill="rgba(235,235,235,0.08)" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-          <path d="M18 20 Q 24 16 30 22" stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M38 38 L 54 54" stroke="var(--cursor-a)" strokeWidth="6" strokeLinecap="round" />
+          <path d="M38 38 L 54 54" stroke="var(--cursor-b)" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="28" cy="28" r="20" fill="none" stroke="var(--cursor-a)" strokeWidth="4" />
+          <circle cx="28" cy="28" r="17" fill="rgba(var(--ink-rgb),0.08)" stroke="rgba(var(--ink-rgb),0.15)" strokeWidth="1" />
+          <path d="M18 20 Q 24 16 30 22" stroke="rgba(var(--ink-rgb),0.4)" strokeWidth="2" fill="none" strokeLinecap="round" />
         </svg>
       </div>
 
@@ -313,7 +365,7 @@ function CustomCursor() {
         style={{
           width: "40px",
           height: "40px",
-          border: "2px solid rgba(235,235,235,0.5)",
+          border: "2px solid rgba(var(--ink-rgb),0.5)",
           opacity: 0,
           transform: "translate(-50%,-50%) scale(0.5)",
           transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
@@ -346,8 +398,8 @@ function ScrollProgress() {
   const { scrollYProgress } = useScroll();
   const scaleY = useTransform(scrollYProgress, [0, 1], [0, 1]);
   return (
-    <div className="fixed right-5 top-16 bottom-8 z-[150] w-px hidden md:block" style={{ background: "rgba(235,235,235,0.05)" }}>
-      <motion.div className="w-full origin-top" style={{ background: "linear-gradient(to bottom, #FF3B00, rgba(255,59,0,0.2))", scaleY, height: "100%" }} />
+    <div className="fixed right-5 top-16 bottom-8 z-[150] w-px hidden md:block" style={{ background: "rgba(var(--ink-rgb),0.05)" }}>
+      <motion.div className="w-full origin-top" style={{ background: "linear-gradient(to bottom, var(--accent), rgba(var(--accent-rgb),0.2))", scaleY, height: "100%" }} />
     </div>
   );
 }
@@ -369,20 +421,20 @@ function Preloader({ onDone }: { onDone: () => void }) {
     return () => { clearInterval(gi); clearInterval(ci); };
   }, [onDone]);
   return (
-    <motion.div className="fixed inset-0 z-[9000] flex flex-col items-center justify-center overflow-hidden" style={{ background: "#030303", clipPath: "inset(0 0 0% 0)" }} exit={{ clipPath: "inset(0 0 100% 0)", transition: { duration: 0.9, ease: [0.76, 0, 0.24, 1] } }}>
-      <div className="absolute left-0 right-0 h-px z-10 pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, #FF3B00, transparent)", animation: "scanline 3s linear infinite", top: `${count}%`, opacity: 0.6 }} />
+    <motion.div className="fixed inset-0 z-[9000] flex flex-col items-center justify-center overflow-hidden" style={{ background: "var(--bg)", clipPath: "inset(0 0 0% 0)" }} exit={{ clipPath: "inset(0 0 100% 0)", transition: { duration: 0.9, ease: [0.76, 0, 0.24, 1] } }}>
+      <div className="absolute left-0 right-0 h-px z-10 pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, var(--accent), transparent)", animation: "scanline 3s linear infinite", top: `${count}%`, opacity: 0.6 }} />
       <div className="relative select-none">
-        <div className="font-black tabular-nums" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(5rem, 20vw, 18rem)", color: "#EBEBEB", letterSpacing: "-0.05em", lineHeight: 1 }}>
+        <div className="font-black tabular-nums" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(5rem, 20vw, 18rem)", color: "var(--ink)", letterSpacing: "-0.05em", lineHeight: 1 }}>
           {String(count).padStart(3, "0")}
         </div>
-        <div className="absolute inset-0 flex items-center justify-center font-black tabular-nums select-none pointer-events-none" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "clamp(5rem, 20vw, 18rem)", color: "#FF3B00", letterSpacing: "-0.05em", lineHeight: 1, opacity: count < 100 ? 0.18 : 0, transition: "opacity 0.3s" }}>
+        <div className="absolute inset-0 flex items-center justify-center font-black tabular-nums select-none pointer-events-none" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "clamp(5rem, 20vw, 18rem)", color: "var(--accent)", letterSpacing: "-0.05em", lineHeight: 1, opacity: count < 100 ? 0.18 : 0, transition: "opacity 0.3s" }}>
           {glitch}
         </div>
       </div>
-      <div className="mt-8 w-72 overflow-hidden" style={{ height: "1px", background: "rgba(235,235,235,0.08)" }}>
-        <motion.div className="h-full" style={{ background: "#FF3B00" }} animate={{ width: `${count}%` }} transition={{ duration: 0.08, ease: "linear" }} />
+      <div className="mt-8 w-72 overflow-hidden" style={{ height: "1px", background: "rgba(var(--ink-rgb),0.08)" }}>
+        <motion.div className="h-full" style={{ background: "var(--accent)" }} animate={{ width: `${count}%` }} transition={{ duration: 0.08, ease: "linear" }} />
       </div>
-      <div className="mt-5 text-xs tracking-[0.3em] uppercase" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.25)" }}>
+      <div className="mt-5 text-xs tracking-[0.3em] uppercase" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.25)" }}>
         SYS_INIT — LOADING PORTFOLIO
       </div>
     </motion.div>
@@ -394,8 +446,8 @@ function Preloader({ onDone }: { onDone: () => void }) {
 function SectionLabel({ number, label, visible }: { number: string; label: string; visible: boolean }) {
   return (
     <motion.div initial={{ opacity: 0, x: -20 }} animate={visible ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.7 }} className="flex items-center gap-5">
-      <div className="text-xs tracking-[0.3em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "#FF3B00" }}>{number} — {label}</div>
-      <div className="flex-1 h-px" style={{ background: "rgba(235,235,235,0.07)" }} />
+      <div className="text-xs tracking-[0.3em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "var(--accent)" }}>{number} — {label}</div>
+      <div className="flex-1 h-px" style={{ background: "rgba(var(--ink-rgb),0.07)" }} />
     </motion.div>
   );
 }
@@ -445,15 +497,21 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
   const isExpanded = (id: string) => hoveredId === id || activeId === id;
 
   return (
-    <motion.nav id="main-nav" initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3, duration: 1, ease: [0.16, 1, 0.3, 1] }} className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-8 py-6 transition-all duration-500" style={{ borderBottom: scrolled ? "1px solid rgba(235,235,235,0.06)" : "1px solid transparent", backdropFilter: scrolled ? "blur(12px)" : "none" }}>
-      <button onClick={() => onScrollTo("top")} className="text-xs tracking-[0.25em] font-medium transition-opacity hover:opacity-60" style={{ fontFamily: "JetBrains Mono, monospace", color: "#FF3B00" }} data-hover>DAWIT</button>
+    <motion.nav id="main-nav" initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3, duration: 1, ease: [0.16, 1, 0.3, 1] }} className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-8 py-6 transition-all duration-500" style={{ borderBottom: scrolled ? "1px solid rgba(var(--ink-rgb),0.06)" : "1px solid transparent", backdropFilter: scrolled ? "blur(12px)" : "none" }}>
+      {/* Left cluster: logo */}
+      <div className="flex items-center gap-3">
+        <button onClick={() => onScrollTo("top")} className="text-xs tracking-[0.25em] font-medium transition-opacity hover:opacity-60" style={{ fontFamily: "JetBrains Mono, monospace", color: "var(--accent)" }} data-hover>DAWIT</button>
+      </div>
 
+      {/* Right cluster: theme toggle · nav links · mobile menu */}
+      <div className="flex items-center">
+        <div className="mr-3 md:mr-4"><ThemeToggle /></div>
       {/* Desktop nav */}
       <div className="hidden md:flex items-center gap-3">
         {NAV_SECTIONS.map(({ num, label, id }) => {
           const expanded = isExpanded(id);
           const active = activeId === id;
-          const color = active ? "#FF3B00" : hoveredId === id ? "#EBEBEB" : "rgba(235,235,235,0.45)";
+          const color = active ? "var(--accent)" : hoveredId === id ? "var(--ink)" : "rgba(var(--ink-rgb),0.65)";
           return (
             <button
               key={id}
@@ -490,14 +548,14 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
   aria-label="Toggle menu"
 >
         <span
-          className="block w-6 h-0.5 bg-[#EBEBEB] origin-center"
+          className="block w-6 h-0.5 bg-[var(--ink)] origin-center"
           style={{
             transform: menuOpen ? "rotate(45deg) translateY(4.5px)" : "rotate(-12deg)",
             transition: "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }}
         />
         <span
-          className="block w-6 h-0.5 bg-[#EBEBEB]"
+          className="block w-6 h-0.5 bg-[var(--ink)]"
           style={{
             opacity: menuOpen ? 0 : 1,
             transform: menuOpen ? "scaleX(0)" : "scaleX(1)",
@@ -505,13 +563,14 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
           }}
         />
         <span
-          className="block w-6 h-0.5 bg-[#EBEBEB] origin-center"
+          className="block w-6 h-0.5 bg-[var(--ink)] origin-center"
           style={{
             transform: menuOpen ? "rotate(-45deg) translateY(-4.5px)" : "rotate(12deg)",
             transition: "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }}
         />
       </button>
+      </div>
 
       {/* Mobile nav panel */}
       {menuOpen && (
@@ -521,12 +580,12 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="md:hidden absolute top-full left-0 right-0 border-b border-white/5"
-          style={{ background: "rgba(3,3,3,0.95)", backdropFilter: "blur(12px)" }}
+          style={{ background: "rgba(var(--bg-rgb),0.95)", backdropFilter: "blur(12px)" }}
         >
           <div className="flex flex-col items-start gap-1 px-8 py-6">
             {NAV_SECTIONS.map(({ num, label, id }) => {
               const active = activeId === id;
-              const color = active ? "#FF3B00" : "#EBEBEB";
+              const color = active ? "var(--accent)" : "var(--ink)";
           return (
             <button
               key={id}
@@ -535,8 +594,8 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
               onMouseEnter={() => setHoveredId(id)}
               onMouseLeave={() => setHoveredId(null)}
               data-hover
-              className="text-left text-sm tracking-[0.15em] transition-colors duration-200"
-              style={{ fontFamily: "JetBrains Mono, monospace", color, padding: "8px 0", display: "flex", alignItems: "center", gap: "10px" }}
+              className="text-left text-sm tracking-[0.15em] transition-colors duration-200 -mx-8"
+              style={{ fontFamily: "JetBrains Mono, monospace", color, padding: "8px 0 8px 32px", display: "flex", alignItems: "center", gap: "10px", width: "100%" }}
             >
                   <span style={{ opacity: active ? 1 : 0.6 }}>{num}</span>
                   <span className="overflow-hidden whitespace-nowrap" style={{ maxWidth: "160px", opacity: 1, transition: "max-width 0.4s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease" }}>
@@ -570,16 +629,16 @@ function StackLine({ color }: { color: string }) {
         fontWeight: 900,
       }}
     >
-      <span style={{ position: "relative", zIndex: 1, color: "#EBEBEB" }}>S</span>
-      <span style={{ position: "relative", zIndex: 1, color: "#EBEBEB" }}>T</span>
-      <span style={{ position: "relative", zIndex: 1, color: "#EBEBEB" }}>A</span>
+      <span style={{ position: "relative", zIndex: 1, color: "var(--ink)" }}>S</span>
+      <span style={{ position: "relative", zIndex: 1, color: "var(--ink)" }}>T</span>
+      <span style={{ position: "relative", zIndex: 1, color: "var(--ink)" }}>A</span>
       <span
         id="stack-c"
         style={{
           position: "relative",
           zIndex: 1,
           color: "transparent",
-          WebkitTextStroke: "2px rgba(235,235,235,0.9)",
+          WebkitTextStroke: "2px rgba(var(--ink-rgb),0.9)",
           paintOrder: "stroke fill",
         }}
       >
@@ -590,7 +649,7 @@ function StackLine({ color }: { color: string }) {
           position: "relative",
           zIndex: 1,
           color: "transparent",
-          WebkitTextStroke: "2px rgba(235,235,235,0.9)",
+          WebkitTextStroke: "2px rgba(var(--ink-rgb),0.9)",
           paintOrder: "stroke fill",
         }}
       >
@@ -623,7 +682,7 @@ function HeroImageTagline() {
             textAlign: "right",
             fontFamily: "'JetBrains Mono', 'Courier New', monospace",
             fontWeight: 800,
-            color: "#EBEBEB",
+            color: "var(--ink)",
             fontSize: "clamp(13px, 1.8vw, 35px)",
             letterSpacing: "-0.02em",
             lineHeight: 1.15,
@@ -640,11 +699,12 @@ function HeroImageTagline() {
 // ─── HERO SECTION (IMPROVED) ─────────────────────────────────────────────────
 
 function HeroSection() {
+  const { theme } = useTheme();
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], [0, -180]);
   const opacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
-  const words = [{ text: "FULL", color: "#EBEBEB" }, { text: "STACK", color: "#EBEBEB" }, { text: "DEV.", color: "#FF3B00" }];
+  const words = [{ text: "FULL", color: "var(--ink)" }, { text: "STACK", color: "var(--ink)" }, { text: "DEV.", color: "var(--accent)" }];
   const imgRef = useRef<HTMLDivElement>(null);
   const parallaxRef = useRef<HTMLDivElement>(null);
   const [imgStyle, setImgStyle] = useState<React.CSSProperties>({ display: "none" });
@@ -757,13 +817,21 @@ if (width < minWidth) {
     };
   }, []);
 
+  // Preload both robot images so theme swaps are instant (no network lag).
+  useEffect(() => {
+    const dark = new Image();
+    dark.src = ROBOT_IMG;
+    const light = new Image();
+    light.src = "/robotw-blend.webp";
+  }, []);
+
   return (
     <section
   id="home"
   ref={ref}
   className="relative flex flex-col justify-start px-8 overflow-hidden md:overflow-visible"
   style={{
-    background: "#030303",
+    background: "var(--bg)",
     paddingTop: "4.5rem",   /* under navbar */
     paddingBottom: "2rem",  /* small extra space under content */
     minHeight: "unset",
@@ -774,7 +842,7 @@ if (width < minWidth) {
         className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(235,235,235,1) 1px, transparent 1px), linear-gradient(90deg, rgba(235,235,235,1) 1px, transparent 1px)",
+            "linear-gradient(rgba(var(--ink-rgb),1) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--ink-rgb),1) 1px, transparent 1px)",
           backgroundSize: "100px 100px",
         }}
       />
@@ -788,27 +856,54 @@ if (width < minWidth) {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{ ...imgStyle, containerType: "inline-size" }}      >
+        {theme !== "light" && (
         <div
           className="absolute inset-0"
           style={{
-            background: "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(255,59,0,0.18) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(var(--accent-rgb),0.18) 0%, transparent 70%)",
             opacity: hovered ? 1 : 0.5,
             transition: "opacity 0.4s",
           }}
         />
+        )}
         <div ref={parallaxRef} className="absolute inset-0 overflow-hidden" style={{ transform: "translate(0px,0px)" }}>
+          {/* Dark-theme robot — stacked & crossfaded so swaps are instant and in sync with the theme transition */}
           <img
             src={ROBOT_IMG}
             alt="Robot"
             draggable={false}
             className="w-full h-full object-contain"
             style={{
+              position: "absolute",
+              inset: 0,
               width: "100%",
               height: "100%",
               objectFit: "contain",
               objectPosition: "center bottom",
-transform: "scale(1)",              transition: "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-              filter: hovered ? "brightness(1.1)" : "brightness(0.9)",
+              transform: "scale(1)",
+              opacity: theme === "light" ? 0 : 1,
+              transition: "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+              filter: theme === "light" ? "none" : hovered ? "brightness(1.1)" : "brightness(0.9)",
+            }}
+          />
+          {/* Light-theme robot */}
+          <img
+            src="/robotw-blend.webp"
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="w-full h-full object-contain"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              objectPosition: "center bottom",
+              transform: "scale(1)",
+              opacity: theme === "light" ? 1 : 0,
+              transition: "opacity 0s",
+              filter: "none",
             }}
           />
         </div>
@@ -820,7 +915,7 @@ transform: "scale(1)",              transition: "transform 0.5s cubic-bezier(0.1
       <div
         id="hero-currently"
         className="text-xs tracking-[0.25em] mb-2"
-        style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0)" }}
+        style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0)" }}
         aria-hidden="true"
       />
 
@@ -870,7 +965,7 @@ transform: "scale(1)",              transition: "transform 0.5s cubic-bezier(0.1
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.2, duration: 0.9 }}
             className="max-w-xs text-sm leading-7"
-            style={{ fontFamily: "Inter, sans-serif", color: "rgba(235,235,235,0.38)", fontWeight: 300 }}
+            style={{ fontFamily: "Inter, sans-serif", color: "rgba(var(--ink-rgb),0.38)", fontWeight: 300 }}
           >
           </motion.p>
           <motion.div
@@ -883,7 +978,7 @@ transform: "scale(1)",              transition: "transform 0.5s cubic-bezier(0.1
               animate={{ scaleY: [1, 1.4, 1], opacity: [0.3, 0.8, 0.3] }}
               transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
               className="w-px h-14 origin-top"
-              style={{ background: "linear-gradient(to bottom, #FF3B00, transparent)" }}
+              style={{ background: "linear-gradient(to bottom, var(--accent), transparent)" }}
             />
           </motion.div>
         </div>
@@ -898,14 +993,14 @@ function DualMarquee() {
   const stackDouble = [...STACK, ...STACK];
   const attrDouble = [...ATTRIBUTES, ...ATTRIBUTES];
   return (
-    <div className="py-6 overflow-hidden relative" style={{ borderTop: "1px solid rgba(235,235,235,0.06)", borderBottom: "1px solid rgba(235,235,235,0.06)" }}>
+    <div className="py-6 overflow-hidden relative" style={{ borderTop: "1px solid rgba(var(--ink-rgb),0.06)", borderBottom: "1px solid rgba(var(--ink-rgb),0.06)" }}>
       {/* Row 1: tech stack → left */}
       <div className="mb-3">
         <motion.div className="flex gap-10 whitespace-nowrap" animate={{ x: ["0%", "-50%"] }} transition={{ duration: 30, repeat: Infinity, ease: "linear" }}>
           {stackDouble.map((item, i) => (
             <div key={i} className="flex items-center gap-10 shrink-0">
-              <span className="text-xs tracking-[0.25em] uppercase" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.45)" }}>{item}</span>
-              <span style={{ color: "rgba(255,59,0,0.3)", fontSize: "0.55rem" }}>✦</span>
+              <span className="text-xs tracking-[0.25em] uppercase" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.65)" }}>{item}</span>
+              <span style={{ color: "rgba(var(--accent-rgb),0.3)", fontSize: "0.55rem" }}>✦</span>
             </div>
           ))}
         </motion.div>
@@ -915,7 +1010,7 @@ function DualMarquee() {
         <motion.div className="flex gap-10 whitespace-nowrap" animate={{ x: ["-50%", "0%"] }} transition={{ duration: 45, repeat: Infinity, ease: "linear" }}>
           {attrDouble.map((item, i) => (
             <div key={i} className="flex items-center gap-10 shrink-0">
-              <span className="text-xs tracking-[0.35em] uppercase font-bold" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "0.55rem", color: "rgba(235,235,235,0.18)" }}>{item}</span>
+              <span className="text-xs tracking-[0.35em] uppercase font-bold" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "0.55rem", color: "rgba(var(--ink-rgb),0.18)" }}>{item}</span>
               <span style={{ color: "rgba(200,255,0,0.25)", fontSize: "0.45rem" }}>◆</span>
             </div>
           ))}
@@ -943,7 +1038,7 @@ function PortraitChamber({ visible }: { visible: boolean }) {
       <div
         className="absolute -inset-6 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse 60% 60% at 50% 40%, rgba(255,59,0,0.4) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse 60% 60% at 50% 40%, rgba(var(--accent-rgb),0.4) 0%, transparent 70%)",
           opacity: bright ? 0.7 : 0.16,
           filter: "blur(12px)",
           transition: "opacity 0.7s ease",
@@ -971,6 +1066,8 @@ function PortraitChamber({ visible }: { visible: boolean }) {
             src="/dawit.webp"
             alt="Dawit Dargie"
             draggable={false}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
             style={{
               filter: bright ? "grayscale(0) brightness(1.04) contrast(1.02) saturate(1.08)" : "grayscale(1) contrast(1.05)",
@@ -984,7 +1081,7 @@ function PortraitChamber({ visible }: { visible: boolean }) {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: "linear-gradient(to top, rgba(3,3,3,0.55) 0%, rgba(3,3,3,0) 40%)",
+            background: "linear-gradient(to top, rgba(var(--bg-rgb),0.55) 0%, rgba(var(--bg-rgb),0) 40%)",
             opacity: bright ? 0 : 1,
             transition: "opacity 0.7s ease",
           }}
@@ -994,7 +1091,7 @@ function PortraitChamber({ visible }: { visible: boolean }) {
         <div
           className="absolute left-0 right-0 h-px pointer-events-none"
           style={{
-            background: "linear-gradient(90deg, transparent, rgba(255,59,0,0.5), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(var(--accent-rgb),0.5), transparent)",
             animation: "scanline 6s linear infinite",
             opacity: bright ? 0.22 : 0.55,
             transition: "opacity 0.6s ease",
@@ -1009,14 +1106,14 @@ function AboutSection() {
   const { ref, visible } = useInView(0.15);
 
   return (
-    <section id="about" ref={ref} className="px-8 py-14 md:py-24" style={{ background: "#030303" }}>
+    <section id="about" ref={ref} className="px-8 py-14 md:py-24" style={{ background: "var(--bg)" }}>
       <div className="max-w-7xl mx-auto">
         <SectionLabel number="02" label="ABOUT" visible={visible} />
         <div className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
 
           {/* Left: identity + philosophy */}
           <div>
-            {[{ t: "DAWIT DARGIE", c: "#EBEBEB" }, { t: "FULL-STACK", c: "#FF3B00" }, { t: "DEVELOPER", c: "#FF3B00" }].map((line, i) => (
+            {[{ t: "DAWIT DARGIE", c: "var(--ink)" }, { t: "FULL-STACK", c: "var(--accent)" }, { t: "DEVELOPER", c: "var(--accent)" }].map((line, i) => (
               <div key={line.t} className="overflow-hidden" style={{ lineHeight: 1 }}>
                 <motion.div initial={{ y: "105%" }} animate={visible ? { y: 0 } : {}} transition={{ duration: 1.1, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }} className="font-black tracking-tighter pb-2 break-words" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1.7rem, 4.6vw, 4.2rem)", color: line.c, letterSpacing: "-0.035em" }}>
                   {line.t}
@@ -1025,16 +1122,16 @@ function AboutSection() {
             ))}
 
             <motion.div initial={{ opacity: 0, y: 18 }} animate={visible ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.45, duration: 0.8 }} className="mt-8">
-              <p className="font-bold text-base sm:text-lg leading-relaxed" style={{ fontFamily: "Inter, sans-serif", color: "#EBEBEB" }}>
+              <p className="font-bold text-base sm:text-lg leading-relaxed" style={{ fontFamily: "Inter, sans-serif", color: "var(--ink)" }}>
                 I build complete systems around problems.
               </p>
-              <p className="mt-5 text-sm sm:text-base leading-7 sm:leading-8 font-light" style={{ fontFamily: "Inter, sans-serif", color: "rgba(235,235,235,0.55)" }}>
+              <p className="mt-5 text-sm sm:text-base leading-7 sm:leading-8 font-light" style={{ fontFamily: "Inter, sans-serif", color: "rgba(var(--ink-rgb),0.72)" }}>
                 I start with the problem and the outcome, understand what needs to work, define the users,
                 data, rules, and interactions, shape the right system structure and experience, build and
                 connect everything end-to-end, then test and refine it until it is reliable, usable, and performant.
               </p>
-              <p className="mt-6 text-sm sm:text-base leading-7 font-medium" style={{ fontFamily: "Inter, sans-serif", color: "rgba(235,235,235,0.75)" }}>
-                You get <span className="font-black" style={{ color: "#FF3B00" }}>premium-quality work without the premium-agency price.</span>
+              <p className="mt-6 text-sm sm:text-base leading-7 font-medium" style={{ fontFamily: "Inter, sans-serif", color: "rgba(var(--ink-rgb),0.75)" }}>
+                You get <span className="font-black" style={{ color: "var(--accent)" }}>premium-quality work without the premium-agency price.</span>
               </p>
             </motion.div>
           </div>
@@ -1049,23 +1146,22 @@ function AboutSection() {
 // ─── SKILLS SECTION — "THE STACK ORBIT" ───────────────────────────────────────
 const SKILL_ORBITS = [
   { radius: 34, duration: 26, reverse: false, skills: [
-    { name: "GO", level: 82, years: 2, accent: "#EBEBEB" },
-    { name: "REACT", level: 95, years: 4, accent: "#EBEBEB" },
-    { name: "NEXT.JS", level: 92, years: 3, accent: "#EBEBEB" },
-    { name: "TYPESCRIPT", level: 94, years: 4, accent: "#EBEBEB" },
-    { name: "THREE.JS", level: 80, years: 2, accent: "#EBEBEB" },
+    { name: "GO", level: 95, years: 2, accent: "var(--ink)" },
+    { name: "REACT", level: 95, years: 4, accent: "var(--ink)" },
+    { name: "NEXT.JS", level: 92, years: 3, accent: "var(--ink)" },
+    { name: "TYPESCRIPT", level: 94, years: 4, accent: "var(--ink)" },
+    { name: "SHOPIFY", level: 86, years: 2, accent: "var(--ink)" },
   ]},
   { radius: 46, duration: 38, reverse: true, skills: [
-    { name: "NODE.JS", level: 91, years: 4, accent: "#EBEBEB" },
-    { name: "PYTHON", level: 87, years: 3, accent: "#EBEBEB" },
-    { name: "GRAPHQL", level: 84, years: 2, accent: "#EBEBEB" },
-    { name: "POSTGRESQL", level: 88, years: 3, accent: "#EBEBEB" },
+    { name: "NODE.JS", level: 91, years: 4, accent: "var(--ink)" },
+    { name: "PYTHON", level: 87, years: 3, accent: "var(--ink)" },
+    { name: "POSTGRESQL", level: 88, years: 3, accent: "var(--ink)" },
+    { name: "REST API", level: 90, years: 3, accent: "var(--ink)" },
   ]},
   { radius: 58, duration: 52, reverse: false, skills: [
-    { name: "DOCKER", level: 86, years: 3, accent: "#EBEBEB" },
-    { name: "KUBERNETES", level: 78, years: 2, accent: "#EBEBEB" },
-    { name: "REDIS", level: 82, years: 3, accent: "#EBEBEB" },
-    { name: "AWS", level: 85, years: 3, accent: "#EBEBEB" },
+    { name: "DOCKER", level: 86, years: 3, accent: "var(--ink)" },
+    { name: "KUBERNETES", level: 78, years: 2, accent: "var(--ink)" },
+    { name: "AWS", level: 85, years: 3, accent: "var(--ink)" },
   ]},
 ];
 
@@ -1077,32 +1173,30 @@ const SKILL_ICONS: Record<string, IconType> = {
   REACT: SiReact,
   "NEXT.JS": SiNextdotjs,
   TYPESCRIPT: SiTypescript,
-  "THREE.JS": SiThreedotjs,
   "NODE.JS": SiNodedotjs,
   PYTHON: SiPython,
-  GRAPHQL: SiGraphql,
   POSTGRESQL: SiPostgresql,
   DOCKER: SiDocker,
   KUBERNETES: SiKubernetes,
-  REDIS: SiRedis,
   AWS: FiCloud,
   GO: SiGo,
+  SHOPIFY: SiShopify,
+  "REST API": TbApi,
 };
 
 const SKILL_TAGLINES: Record<string, string> = {
   REACT: "Component architecture, hooks mastery, and render-performance tuning.",
-  "NEXT.JS": "App router, SSR/ISR and edge runtime — full-stack React at production scale.",
+  "NEXT.JS": "App router, SSR/ISR and edge runtime, full-stack React at production scale.",
   TYPESCRIPT: "Strict typing, generics and type-level design for zero-surprise codebases.",
-  "THREE.JS": "WebGL scenes, shader materials and interactive 3D on the web.",
   "NODE.JS": "Event-driven APIs, streams and real-time services at scale.",
   PYTHON: "Automation, data pipelines, AI integrations and backend tooling.",
-  GRAPHQL: "Schema design, resolvers and efficient client-side data graphs.",
   POSTGRESQL: "Data modeling, indexing, partitioning and query optimization.",
   DOCKER: "Reproducible containerized environments from laptop to production.",
   KUBERNETES: "Orchestration, autoscaling and resilient zero-downtime deploys.",
-  REDIS: "Caching, pub/sub and sub-millisecond data access layers.",
   AWS: "Serverless, storage, networking and cloud cost discipline.",
-  GO: "Concurrent, lightweight backend services and CLI tools powered by goroutines.",
+  GO: "Production-grade Go services built with Gin, goroutines and concurrency patterns, type-safe SQL via sqlc, table-driven testing, and Prometheus/OpenTelemetry observability.",
+  SHOPIFY: "Storefronts, headless commerce and custom theme development on Shopify.",
+  "REST API": "Designing and consuming clean, versioned HTTP APIs that power reliable integrations.",
 };
 
 function skillIcon(s: Skill): IconType {
@@ -1130,7 +1224,7 @@ function SkillTile({ skill, index, active, visible, onSelect }: { skill: Skill; 
         transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}
     >
-      <span className="text-[0.5rem] leading-none" style={{ fontFamily: "JetBrains Mono, monospace", color: active ? "rgba(3,3,3,0.6)" : `${skill.accent}99` }}>
+      <span className="text-[0.5rem] leading-none" style={{ fontFamily: "JetBrains Mono, monospace", color: active ? "rgba(var(--bg-rgb),0.6)" : `${skill.accent}99` }}>
         {String(index + 1).padStart(2, "0")}
       </span>
       {(() => {
@@ -1141,7 +1235,7 @@ function SkillTile({ skill, index, active, visible, onSelect }: { skill: Skill; 
               style={{
                 width: "clamp(1.5rem, 3.2vw, 2.2rem)",
                 height: "auto",
-                color: active ? "#030303" : "#EBEBEB",
+                color: active ? "var(--bg)" : "var(--ink)",
                 filter: active ? "none" : `drop-shadow(0 0 10px ${skill.accent}55)`,
                 transition: "color 0.3s ease, filter 0.3s ease",
               }}
@@ -1150,11 +1244,11 @@ function SkillTile({ skill, index, active, visible, onSelect }: { skill: Skill; 
         );
       })()}
       <div>
-        <div className="text-center truncate mb-1" style={{ fontSize: "clamp(0.42rem, 0.85vw, 0.58rem)", letterSpacing: "0.08em", fontFamily: "JetBrains Mono, monospace", color: active ? "#030303" : "rgba(235,235,235,0.5)" }}>
+        <div className="text-center truncate mb-1" style={{ fontSize: "clamp(0.42rem, 0.85vw, 0.58rem)", letterSpacing: "0.08em", fontFamily: "JetBrains Mono, monospace", color: active ? "var(--bg)" : "rgba(var(--ink-rgb),0.68)" }}>
           {skill.name}
         </div>
-        <div className="h-[3px] w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-          <div className="h-full rounded-full" style={{ width: `${skill.level}%`, background: active ? "#030303" : skill.accent, transition: "background 0.3s ease" }} />
+        <div className="h-[3px] w-full rounded-full overflow-hidden" style={{ background: "rgba(var(--ink-rgb),0.08)" }}>
+          <div className="h-full rounded-full" style={{ width: `${skill.level}%`, background: active ? "var(--bg)" : skill.accent, transition: "background 0.3s ease" }} />
         </div>
       </div>
     </motion.div>
@@ -1183,19 +1277,15 @@ function SkillPanel({ skill, index, visible }: { skill: Skill; index: number; vi
           </div>
         );
       })()}
-      <div className="font-black tracking-tight mt-2 break-words" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1rem, 1.8vw, 1.5rem)", color: "#EBEBEB", letterSpacing: "-0.02em" }}>
+      <div className="font-black tracking-tight mt-2 break-words" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1rem, 1.8vw, 1.5rem)", color: "var(--ink)", letterSpacing: "-0.02em" }}>
         {skill.name}
       </div>
-      <p className="mt-3 text-xs sm:text-sm leading-6 font-light min-h-[3.2rem]" style={{ fontFamily: "Inter, sans-serif", color: "rgba(235,235,235,0.55)" }}>
+      <p className="mt-3 text-xs sm:text-sm leading-6 font-light min-h-[3.2rem]" style={{ fontFamily: "Inter, sans-serif", color: "rgba(var(--ink-rgb),0.72)" }}>
         {SKILL_TAGLINES[skill.name]}
       </p>
 
       <div className="mt-auto pt-5">
-        <div className="flex justify-between text-[0.55rem] tracking-[0.25em] mb-1.5" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.35)" }}>
-          <span>PROFICIENCY</span>
-          <span style={{ color: skill.accent }}>{skill.level}%</span>
-        </div>
-        <div className="h-[5px] w-full rounded-full overflow-hidden" style={{ background: "rgba(235,235,235,0.07)" }}>
+        <div className="h-[5px] w-full rounded-full overflow-hidden" style={{ background: "rgba(var(--ink-rgb),0.07)" }}>
           <motion.div
             key={`${skill.name}-bar`}
             className="h-full rounded-full"
@@ -1204,10 +1294,6 @@ function SkillPanel({ skill, index, visible }: { skill: Skill; index: number; vi
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             style={{ background: skill.accent, boxShadow: `0 0 10px ${skill.accent}` }}
           />
-        </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[0.55rem] tracking-[0.22em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.3)" }}>
-          <span>{skill.years}Y EXPERIENCE</span>
-          <span>ELEMENT {index + 1}/{ALL_SKILLS.length} · STABLE</span>
         </div>
       </div>
     </motion.div>
@@ -1221,8 +1307,8 @@ function SkillsSection() {
   const activeIndex = ALL_SKILLS.findIndex((s) => s.name === activeSkill.name);
 
   return (
-    <section id="skills" ref={ref} className="relative px-5 sm:px-8 py-14 md:py-24 overflow-hidden" style={{ background: "#030303" }}>
-      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 60% 50% at 30% 40%, rgba(255,59,0,0.05) 0%, transparent 70%)" }} />
+    <section id="skills" ref={ref} className="relative px-5 sm:px-8 py-14 md:py-24 overflow-hidden" style={{ background: "var(--bg)" }}>
+      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 60% 50% at 30% 40%, rgba(var(--accent-rgb),0.05) 0%, transparent 70%)" }} />
       <div className="max-w-7xl mx-auto">
         <SectionLabel number="04" label="SKILLS" visible={visible} />
 
@@ -1232,7 +1318,7 @@ function SkillsSection() {
           animate={visible ? { opacity: 1 } : {}}
           transition={{ delay: 0.3, duration: 0.8 }}
           className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[0.6rem] tracking-[0.25em]"
-          style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.25)" }}
+          style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.25)" }}
         >
           <span><span style={{ color: "#C8FF00" }}>●</span> TABLE ONLINE</span>
           <span>ELEMENTS: {ALL_SKILLS.length}</span>
@@ -1246,7 +1332,7 @@ function SkillsSection() {
             animate={visible ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="relative rounded-xl p-6 sm:p-7 order-2 lg:order-1 overflow-hidden"
-            style={{ border: "1px solid rgba(235,235,235,0.09)", background: "#070707" }}
+            style={{ border: "1px solid rgba(var(--ink-rgb),0.09)", background: "var(--bg2)" }}
           >
             <div className="absolute top-0 left-0 w-10 h-px transition-colors duration-500" style={{ background: activeSkill.accent }} />
             <div className="absolute top-0 left-0 w-px h-10 transition-colors duration-500" style={{ background: activeSkill.accent }} />
@@ -1277,10 +1363,10 @@ function SkillsSection() {
 // ─── WHY ME — GUARANTEE CARDS ────────────────────────────────────────────────
 
 const GUARANTEES = [
-  { title: "Completed on right time", desc: "I respect your time. Projects are completed on schedule without shortcuts or delays.", accent: "#EBEBEB", Icon: FiClock },
-  { title: "Affordable price with quality", desc: "You'll get honest, upfront costs. pay for exactly what you get. Quality work, low cost.", accent: "#EBEBEB", Icon: FiDollarSign },
-  { title: "Free updates & revisions", desc: "Your vision can evolve. I offer free updates to make sure the final product fits you perfectly.", accent: "#EBEBEB", Icon: FiRefreshCw },
-  { title: "No results, no payment", desc: "I stand by my work. If you're not satisfied, you don't pay. Simple and risk-free.", accent: "#EBEBEB", Icon: FiAward },
+  { title: "Completed on right time", desc: "I respect your time. Projects are completed on schedule without shortcuts or delays.", accent: "var(--ink)", Icon: FiClock },
+  { title: "Affordable price with quality", desc: "You'll get honest, upfront costs. pay for exactly what you get. Quality work, low cost.", accent: "var(--ink)", Icon: FiDollarSign },
+  { title: "Free updates & revisions", desc: "Your vision can evolve. I offer free updates to make sure the final product fits you perfectly.", accent: "var(--ink)", Icon: FiRefreshCw },
+  { title: "No results, no payment", desc: "I stand by my work. If you're not satisfied, you don't pay. Simple and risk-free.", accent: "var(--ink)", Icon: FiAward },
 ];
 
 function GuaranteeCard({ item, index, visible }: { item: typeof GUARANTEES[0]; index: number; visible: boolean }) {
@@ -1298,8 +1384,8 @@ function GuaranteeCard({ item, index, visible }: { item: typeof GUARANTEES[0]; i
       data-hover
       className="relative flex flex-col overflow-hidden rounded-xl p-5 sm:p-6 h-full"
       style={{
-        background: hovered ? `${item.accent}08` : "#070707",
-        border: `1px solid ${hovered ? item.accent + "55" : "rgba(235,235,235,0.08)"}`,
+        background: hovered ? `${item.accent}08` : "var(--bg2)",
+        border: `1px solid ${hovered ? item.accent + "55" : "rgba(var(--ink-rgb),0.08)"}`,
         boxShadow: hovered ? `0 18px 50px ${item.accent}22` : "none",
         transform: hovered ? "translateY(-6px)" : "translateY(0)",
         transition: "background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -1343,7 +1429,7 @@ function GuaranteeCard({ item, index, visible }: { item: typeof GUARANTEES[0]; i
           style={{
             width: "clamp(22px, 2.4vw, 26px)",
             height: "clamp(22px, 2.4vw, 26px)",
-            color: hovered ? "#030303" : item.accent,
+            color: hovered ? "var(--bg)" : item.accent,
             transition: "color 0.35s ease",
           }}
         />
@@ -1351,12 +1437,12 @@ function GuaranteeCard({ item, index, visible }: { item: typeof GUARANTEES[0]; i
       {/* Title */}
       <h3
         className="font-black tracking-tight mt-5 sm:mt-6 relative z-10 break-words"
-        style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1.05rem, 1.8vw, 1.35rem)", color: hovered ? item.accent : "#EBEBEB", letterSpacing: "-0.02em", lineHeight: 1.25, transition: "color 0.4s ease" }}
+        style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1.05rem, 1.8vw, 1.35rem)", color: hovered ? item.accent : "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.25, transition: "color 0.4s ease" }}
       >
         {item.title}
       </h3>
       {/* Description */}
-      <p className="mt-3 text-xs sm:text-sm leading-6 font-light relative z-10" style={{ fontFamily: "Inter, sans-serif", color: "rgba(235,235,235,0.55)", transition: "color 0.4s ease" }}>
+      <p className="mt-3 text-xs sm:text-sm leading-6 font-light relative z-10" style={{ fontFamily: "Inter, sans-serif", color: "rgba(var(--ink-rgb),0.72)", transition: "color 0.4s ease" }}>
         {item.desc}
       </p>
       {/* Bottom accent line */}
@@ -1373,8 +1459,8 @@ function GuaranteeCard({ item, index, visible }: { item: typeof GUARANTEES[0]; i
 function WhyMeSection() {
   const { ref, visible } = useInView(0.1);
   return (
-    <section id="why-me" ref={ref} className="px-5 sm:px-8 py-12 md:py-20 relative overflow-hidden" style={{ background: "#030303" }}>
-      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(255,59,0,0.03) 0%, transparent 70%)" }} />
+    <section id="why-me" ref={ref} className="px-5 sm:px-8 py-12 md:py-20 relative overflow-hidden" style={{ background: "var(--bg)" }}>
+      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(var(--accent-rgb),0.03) 0%, transparent 70%)" }} />
       <div className="max-w-7xl mx-auto">
         <SectionLabel number="05" label="WHY CHOOSE ME" visible={visible} />
         <motion.div
@@ -1382,7 +1468,7 @@ function WhyMeSection() {
           animate={visible ? { opacity: 1 } : {}}
           transition={{ delay: 0.3, duration: 0.8 }}
           className="mt-5 text-[0.6rem] tracking-[0.25em]"
-          style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.25)" }}
+          style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.25)" }}
         >
           // FOUR GUARANTEES · ZERO RISK
         </motion.div>
@@ -1402,9 +1488,9 @@ function WhyMeSection() {
 function FullStackBg() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 80% at 25% 50%, rgba(255,59,0,0.1) 0%, transparent 70%)", animation: "blobShift 7s ease-in-out infinite alternate" }} />
+      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 80% at 25% 50%, rgba(var(--accent-rgb),0.1) 0%, transparent 70%)", animation: "blobShift 7s ease-in-out infinite alternate" }} />
       {["const App = () => {", "interface Props {", "  children: ReactNode", "async function build(", "  return <Future />;"].map((line, i) => (
-        <div key={i} className="absolute text-xs whitespace-nowrap select-none" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(255,59,0,0.1)", top: `${15 + i * 18}%`, left: "8%", animation: `codeFloat ${3.5 + i * 0.4}s ease-in-out infinite alternate`, animationDelay: `${i * 0.25}s` }}>
+        <div key={i} className="absolute text-xs whitespace-nowrap select-none" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--accent-rgb),0.1)", top: `${15 + i * 18}%`, left: "8%", animation: `codeFloat ${3.5 + i * 0.4}s ease-in-out infinite alternate`, animationDelay: `${i * 0.25}s` }}>
           {line}
         </div>
       ))}
@@ -1430,7 +1516,7 @@ function ArchBg() {
 function UIBg() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(0,212,255,0.07) 0%, rgba(107,47,250,0.07) 50%, rgba(255,59,0,0.07) 100%)", animation: "spectrumShift 5s ease-in-out infinite alternate" }} />
+      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(0,212,255,0.07) 0%, rgba(107,47,250,0.07) 50%, rgba(var(--accent-rgb),0.07) 100%)", animation: "spectrumShift 5s ease-in-out infinite alternate" }} />
       <div className="absolute" style={{ top: "12%", left: "8%", width: "44%", height: "22%", border: "1px solid rgba(0,212,255,0.18)" }} />
       <div className="absolute" style={{ top: "42%", left: "8%", width: "84%", height: "14%", border: "1px solid rgba(0,212,255,0.12)" }} />
       <div className="absolute" style={{ top: "65%", left: "8%", width: "36%", height: "22%", border: "1px solid rgba(107,47,250,0.18)", borderRadius: "50%" }} />
@@ -1451,10 +1537,10 @@ function CloudBg() {
 }
 
 const BENTO_CARDS = [
-  { id: "01", title: "FULL STACK ENGINEERING", desc: "End-to-end product development — scalable APIs, resilient data layers, and the interfaces humans actually love.", accent: "#EBEBEB", Bg: FullStackBg, col: "1 / 3" },
-  { id: "02", title: "SYSTEM ARCHITECTURE", desc: "Distributed systems, microservices, and infrastructure designed to handle edge cases and extreme load.", accent: "#EBEBEB", Bg: ArchBg, col: "3" },
-  { id: "03", title: "UI/UX ENGINEERING", desc: "Interfaces that feel alive — motion-driven, accessible, pixel-perfect, and built to delight at every interaction.", accent: "#EBEBEB", Bg: UIBg, col: "1" },
-  { id: "04", title: "CLOUD & DEVOPS", desc: "CI/CD pipelines, containerization, and cloud infrastructure that ships fast and stays stable under pressure.", accent: "#EBEBEB", Bg: CloudBg, col: "2 / 4" },
+  { id: "01", title: "FULL STACK ENGINEERING", desc: "End-to-end product development. scalable APIs, resilient data layers, and the interfaces humans actually love.", accent: "var(--ink)", Bg: FullStackBg, col: "1 / 3" },
+  { id: "02", title: "SYSTEM ARCHITECTURE", desc: "Distributed systems, microservices, and infrastructure designed to handle edge cases and load.", accent: "var(--ink)", Bg: ArchBg, col: "3" },
+  { id: "03", title: "UI/UX ENGINEERING", desc: "Interfaces that feel alive. motion-driven, accessible, pixel-perfect, and built to delight at every interaction.", accent: "var(--ink)", Bg: UIBg, col: "1" },
+  { id: "04", title: "FULL-STACK TEACHING", desc: "Teaching full-stack development through practical work with frontend, backend, databases, APIs, and real-world application architecture and projects.", accent: "var(--ink)", Bg: CloudBg, col: "2 / 4" },
 ];
 
 function BentoCard({ card, delay, visible }: { card: typeof BENTO_CARDS[0]; delay: number; visible: boolean }) {
@@ -1476,13 +1562,13 @@ function BentoCard({ card, delay, visible }: { card: typeof BENTO_CARDS[0]; dela
         onMouseMove={tilt.onMouseMove}
         onMouseLeave={tilt.onMouseLeave}
         className="relative p-8 h-64 flex flex-col justify-between overflow-hidden"
-        style={{ background: "#0A0A0A", border: `1px solid ${hovered ? card.accent + "30" : "rgba(235,235,235,0.07)"}`, transition: "border-color 0.4s ease" }}
+        style={{ background: "var(--bg3)", border: `1px solid ${hovered ? card.accent + "30" : "rgba(var(--ink-rgb),0.07)"}`, transition: "border-color 0.4s ease" }}
       >
         <card.Bg />
         {/* Content */}
         <div className="relative z-10">
           <div className="text-xs tracking-[0.3em] mb-3" style={{ fontFamily: "JetBrains Mono, monospace", color: card.accent, opacity: 0.7 }}>{card.id}</div>
-          <div className="font-black leading-tight" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(0.9rem, 1.5vw, 1.2rem)", color: hovered ? card.accent : "#EBEBEB", letterSpacing: "-0.02em", transition: "color 0.4s ease" }}>
+          <div className="font-black leading-tight" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(0.9rem, 1.5vw, 1.2rem)", color: hovered ? card.accent : "var(--ink)", letterSpacing: "-0.02em", transition: "color 0.4s ease" }}>
             {card.title}
           </div>
         </div>
@@ -1491,7 +1577,7 @@ function BentoCard({ card, delay, visible }: { card: typeof BENTO_CARDS[0]; dela
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
           className="relative z-10 text-xs leading-5"
-          style={{ fontFamily: "Inter, sans-serif", color: "rgba(235,235,235,0.5)", fontWeight: 300, maxWidth: "320px" }}
+          style={{ fontFamily: "Inter, sans-serif", color: "rgba(var(--ink-rgb),0.5)", fontWeight: 300, maxWidth: "320px" }}
         >
           {card.desc}
         </motion.p>
@@ -1515,7 +1601,7 @@ function BentoCard({ card, delay, visible }: { card: typeof BENTO_CARDS[0]; dela
 function BentoCapabilities() {
   const { ref, visible } = useInView(0.1);
   return (
-    <section id="services" ref={ref} className="px-8 py-14 md:py-24" style={{ background: "#030303" }}>
+    <section id="services" ref={ref} className="px-8 py-14 md:py-24" style={{ background: "var(--bg)" }}>
       <div className="max-w-7xl mx-auto">
         <SectionLabel number="06" label="SERVICES" visible={visible} />
         <div className="mt-14 grid gap-2 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -1532,7 +1618,7 @@ function BentoCapabilities() {
 
 // ─── PROJECT DETAIL MODAL ─────────────────────────────────────────────────────
 
-function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClose: () => void }) {
+function ProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
   const [ctaHovered, setCtaHovered] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const [showHint, setShowHint] = useState(false);
@@ -1565,6 +1651,7 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
   }, [onClose]);
 
   const sections = [
+    ...(project.problem ? [{ label: "THE PROBLEM & SOLUTION", text: project.problem }] : []),
     { label: "WHAT IT DOES", text: project.what },
     { label: "HOW IT WORKS", text: project.how },
     { label: "HOW TO USE IT", text: project.use },
@@ -1582,7 +1669,7 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
       data-modal-overlay
     >
       {/* Backdrop — click anywhere outside closes */}
-      <div className="absolute inset-0" style={{ background: "rgba(3,3,3,0.85)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(var(--bg-rgb),0.85)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} />
 
       {/* Box */}
       <motion.div
@@ -1595,7 +1682,7 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
         className="project-modal-scroll relative w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-xl"
         data-lenis-prevent
         style={{
-          background: "#0A0A0A",
+          background: "var(--bg3)",
           border: `1px solid ${project.accent}45`,
           boxShadow: `0 0 90px ${project.accent}25, 0 40px 80px rgba(0,0,0,0.6)`,
         }}
@@ -1607,7 +1694,7 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
           aria-label="Close project details"
           data-hover
           className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 hover:rotate-90"
-          style={{ background: "rgba(3,3,3,0.75)", border: "1px solid rgba(235,235,235,0.18)", color: "#EBEBEB", fontSize: "1rem", lineHeight: 1 }}
+          style={{ background: "rgba(var(--bg-rgb),0.75)", border: "1px solid rgba(var(--ink-rgb),0.18)", color: "var(--ink)", fontSize: "1rem", lineHeight: 1 }}
         >
           ✕
         </button>
@@ -1616,15 +1703,42 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
           {/* Left rail: image + meta + CTA */}
           <div
             className="flex flex-col gap-5 p-5 sm:p-6 border-b sm:border-b-0 sm:border-r"
-            style={{ borderColor: "rgba(235,235,235,0.08)" }}
+            style={{ borderColor: "rgba(var(--ink-rgb),0.08)" }}
           >
             <div className="relative w-full h-36 sm:h-44 overflow-hidden rounded-lg shrink-0">
-              <img src={project.image} alt={project.title} className="w-full h-full object-cover" />
+              <img src={project.image} alt={project.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: project.accent }} />
             </div>
 
+            {/* Live site CTA — only for projects that have a deployed site */}
+            {project.live && (
+              <a
+                href={project.live}
+                target="_blank"
+                rel="noopener noreferrer"
+                onMouseEnter={() => setCtaHovered(true)}
+                onMouseLeave={() => setCtaHovered(false)}
+                data-hover
+                className="flex items-center justify-between gap-2 px-4 py-3.5 rounded-lg"
+                style={{
+                  border: `1px solid ${project.accent}${ctaHovered ? "" : "55"}`,
+                  background: ctaHovered ? `${project.accent}14` : "transparent",
+                  boxShadow: ctaHovered ? `0 0 34px ${project.accent}44` : "none",
+                  transition: "all 0.35s ease",
+                }}
+              >
+                <span className="text-[0.62rem] tracking-[0.25em] font-bold whitespace-nowrap" style={{ fontFamily: "JetBrains Mono, monospace", color: ctaHovered ? project.accent : "var(--ink)", transition: "color 0.35s ease" }}>
+                  VISIT LIVE SITE
+                </span>
+                <motion.span animate={{ x: ctaHovered ? 6 : 0, rotate: ctaHovered ? -45 : 0 }} transition={{ duration: 0.3 }} style={{ color: project.accent, fontSize: "1.2rem" }}>
+                  →
+                </motion.span>
+              </a>
+            )}
+
+            {/* GitHub CTA — always shown (only button when there's no live site) */}
             <a
-              href={project.link}
+              href={project.github}
               target="_blank"
               rel="noopener noreferrer"
               onMouseEnter={() => setCtaHovered(true)}
@@ -1638,8 +1752,8 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
                 transition: "all 0.35s ease",
               }}
             >
-              <span className="text-[0.62rem] tracking-[0.25em] font-bold whitespace-nowrap" style={{ fontFamily: "JetBrains Mono, monospace", color: ctaHovered ? project.accent : "#EBEBEB", transition: "color 0.35s ease" }}>
-                VISIT LIVE SITE
+              <span className="text-[0.62rem] tracking-[0.25em] font-bold whitespace-nowrap" style={{ fontFamily: "JetBrains Mono, monospace", color: ctaHovered ? project.accent : "var(--ink)", transition: "color 0.35s ease" }}>
+                VIEW IN GITHUB
               </span>
               <motion.span animate={{ x: ctaHovered ? 6 : 0, rotate: ctaHovered ? -45 : 0 }} transition={{ duration: 0.3 }} style={{ color: project.accent, fontSize: "1.2rem" }}>
                 →
@@ -1648,10 +1762,9 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
 
             <div className="flex flex-col gap-2 text-[0.6rem] tracking-[0.22em]" style={{ fontFamily: "JetBrains Mono, monospace"}}>
               <span style={{ color: project.accent }}>{project.category.toUpperCase()}</span>
-              <span style={{ color: "rgba(235,235,235,0.4)" }}>{project.year}</span>
               <div className="flex flex-wrap gap-1.5 mt-1">
                 {project.tags.map((tag) => (
-                  <span key={tag} className="px-2 py-0.5 tracking-wider" style={{ border: "1px solid rgba(235,235,235,0.12)", color: "rgba(235,235,235,0.45)" }}>{tag.toUpperCase()}</span>
+                  <span key={tag} className="px-2 py-0.5 tracking-wider" style={{ border: "1px solid rgba(var(--ink-rgb),0.12)", color: "rgba(var(--ink-rgb),0.65)" }}>{tag.toUpperCase()}</span>
                 ))}
               </div>
             </div>
@@ -1659,7 +1772,7 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
 
           {/* Right: title + all details */}
           <div className="p-5 sm:p-7">
-            <h3 className="font-black tracking-tighter break-words pr-10 sm:pr-0" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1.5rem, 3.5vw, 2.3rem)", color: "#EBEBEB", letterSpacing: "-0.03em", lineHeight: 1.05 }}>
+            <h3 className="font-black tracking-tighter break-words pr-10 sm:pr-0" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1.5rem, 3.5vw, 2.3rem)", color: "var(--ink)", letterSpacing: "-0.03em", lineHeight: 1.05 }}>
               {project.title}
             </h3>
 
@@ -1669,7 +1782,7 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
                   <div className="text-[0.6rem] tracking-[0.25em] pt-1 sm:text-right" style={{ fontFamily: "JetBrains Mono, monospace", color: project.accent, borderRight: `2px solid ${project.accent}66`, paddingRight: "8px" }}>
                     {label}
                   </div>
-                  <p className="text-sm leading-6 font-light" style={{ fontFamily: "Inter, sans-serif", color: "rgba(235,235,235,0.62)" }}>
+                  <p className="text-sm leading-6 font-light whitespace-pre-line" style={{ fontFamily: "Inter, sans-serif", color: "rgba(var(--ink-rgb),0.62)" }}>
                     {text}
                   </p>
                 </div>
@@ -1709,14 +1822,14 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
 
 function WorkSection() {
   const { ref, visible } = useInView(0.1);
-  const [openProject, setOpenProject] = useState<typeof PROJECTS[0] | null>(null);
+  const [openProject, setOpenProject] = useState<Project | null>(null);
 
   return (
-    <section id="work" ref={ref} className="px-8 py-14 md:py-24 relative" style={{ background: "#030303" }}>
+    <section id="work" ref={ref} className="px-8 py-14 md:py-24 relative" style={{ background: "var(--bg)" }}>
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-14">
-          <SectionLabel number="03" label="SELECTED WORK" visible={visible} />
-          <motion.div initial={{ opacity: 0 }} animate={visible ? { opacity: 1 } : {}} transition={{ delay: 0.3 }} className="text-xs tracking-[0.2em] hidden md:block" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.2)" }}>
+          <SectionLabel number="03" label="RECENT WORK" visible={visible} />
+          <motion.div initial={{ opacity: 0 }} animate={visible ? { opacity: 1 } : {}} transition={{ delay: 0.3 }} className="text-xs tracking-[0.2em] hidden md:block" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.2)" }}>
             {PROJECTS.length} PROJECTS
           </motion.div>
         </div>
@@ -1732,7 +1845,7 @@ function WorkSection() {
   );
 }
 
-function ProjectRow({ project, index, parentVisible, onOpen }: { project: typeof PROJECTS[0]; index: number; parentVisible: boolean; onOpen: () => void }) {
+function ProjectRow({ project, index, parentVisible, onOpen }: { project: Project; index: number; parentVisible: boolean; onOpen: () => void }) {
   const [hovered, setHovered] = useState(false);
   return (
     <motion.div
@@ -1747,16 +1860,16 @@ function ProjectRow({ project, index, parentVisible, onOpen }: { project: typeof
       aria-label={`Open details for ${project.title}`}
       data-hover
     >
-      <div className="flex items-center justify-between py-7 relative overflow-hidden" style={{ borderBottom: "1px solid rgba(235,235,235,0.07)" }}>
+      <div className="flex items-center justify-between py-7 relative overflow-hidden" style={{ borderBottom: "1px solid rgba(var(--ink-rgb),0.07)" }}>
         {/* Hover fill from left */}
         <motion.div className="absolute inset-0 pointer-events-none" initial={{ scaleX: 0 }} animate={{ scaleX: hovered ? 1 : 0 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }} style={{ background: `linear-gradient(90deg, ${project.accent}0A 0%, transparent 100%)`, transformOrigin: "left" }} />
         {/* Left accent line on hover */}
         <motion.div className="absolute left-0 top-0 bottom-0 w-px" animate={{ opacity: hovered ? 1 : 0 }} transition={{ duration: 0.3 }} style={{ background: project.accent }} />
 
         <div className="flex items-start md:items-center gap-4 md:gap-8 lg:gap-14 relative pl-2 sm:pl-4">
-          <div className="text-xs w-6 shrink-0 tabular-nums pt-2 md:pt-0" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.22)" }}>0{index + 1}</div>
+          <div className="text-xs w-6 shrink-0 tabular-nums pt-2 md:pt-0" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.22)" }}>0{index + 1}</div>
           <div className="min-w-0">
-            <div className="font-black tracking-tighter break-words" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1.15rem, 3.2vw, 3rem)", color: hovered ? project.accent : "#EBEBEB", letterSpacing: "-0.035em", lineHeight: 1.05, transition: "color 0.4s ease" }}>
+            <div className="font-black tracking-tighter break-words" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(1.15rem, 3.2vw, 3rem)", color: hovered ? project.accent : "var(--ink)", letterSpacing: "-0.035em", lineHeight: 1.05, transition: "color 0.4s ease" }}>
               {project.title}
             </div>
             <motion.p
@@ -1764,7 +1877,7 @@ function ProjectRow({ project, index, parentVisible, onOpen }: { project: typeof
               animate={parentVisible ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: index * 0.1 + 0.3, duration: 0.6 }}
               className="mt-2 text-xs sm:text-sm leading-5 sm:leading-6 font-light max-w-xl"
-              style={{ fontFamily: "Inter, sans-serif", color: hovered ? "rgba(235,235,235,0.7)" : "rgba(235,235,235,0.4)", transition: "color 0.4s ease" }}
+              style={{ fontFamily: "Inter, sans-serif", color: hovered ? "rgba(var(--ink-rgb),0.8)" : "rgba(var(--ink-rgb),0.6)", transition: "color 0.4s ease" }}
             >
               {project.short}
             </motion.p>
@@ -1772,14 +1885,13 @@ function ProjectRow({ project, index, parentVisible, onOpen }: { project: typeof
         </div>
 
         <div className="flex items-center gap-5 lg:gap-10 relative pr-2">
-          <div className="hidden md:block text-xs tracking-[0.15em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.3)" }}>{project.category}</div>
+          <div className="hidden md:block text-xs tracking-[0.15em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.5)" }}>{project.category}</div>
           <div className="hidden lg:flex gap-2">
             {project.tags.map((tag) => (
-              <span key={tag} className="text-xs px-2.5 py-1 tracking-wider" style={{ fontFamily: "JetBrains Mono, monospace", color: hovered ? project.accent : "rgba(235,235,235,0.28)", border: `1px solid ${hovered ? project.accent + "50" : "rgba(235,235,235,0.1)"}`, transition: "all 0.4s ease" }}>{tag}</span>
+              <span key={tag} className="text-xs px-2.5 py-1 tracking-wider" style={{ fontFamily: "JetBrains Mono, monospace", color: hovered ? project.accent : "rgba(var(--ink-rgb),0.28)", border: `1px solid ${hovered ? project.accent + "50" : "rgba(var(--ink-rgb),0.1)"}`, transition: "all 0.4s ease" }}>{tag}</span>
             ))}
           </div>
-          <div className="text-xs tracking-[0.18em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.22)" }}>{project.year}</div>
-          <motion.span animate={{ x: hovered ? 6 : 0, rotate: hovered ? -45 : 0 }} transition={{ duration: 0.3 }} style={{ color: hovered ? project.accent : "rgba(235,235,235,0.25)", fontSize: "1.2rem", transition: "color 0.4s" }}>→</motion.span>
+          <motion.span animate={{ x: hovered ? 6 : 0, rotate: hovered ? -45 : 0 }} transition={{ duration: 0.3 }} style={{ color: hovered ? project.accent : "rgba(var(--ink-rgb),0.25)", fontSize: "1.2rem", transition: "color 0.4s" }}>→</motion.span>
         </div>
       </div>
     </motion.div>
@@ -1799,7 +1911,7 @@ function LiveClock() {
   return (
     <div className="flex items-center gap-3">
       <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#C8FF00", animation: "pulseDot 2s ease-in-out infinite" }} />
-      <span className="text-xs tracking-[0.2em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.3)" }}>
+      <span className="text-xs tracking-[0.2em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.5)" }}>
         SF — {time} PDT
       </span>
     </div>
@@ -1819,8 +1931,8 @@ function ContactSection() {
   };
 
   return (
-    <section id="contact" ref={ref} className="relative px-8 py-14 md:py-24 overflow-hidden" style={{ background: "#030303" }} onMouseMove={handleMouseMove}>
-      <div ref={sectionRef} className="absolute inset-0 pointer-events-none transition-all duration-300" style={{ background: `radial-gradient(ellipse 60% 60% at ${mouse.x}% ${mouse.y}%, rgba(255,59,0,0.06) 0%, transparent 70%)` }} />
+    <section id="contact" ref={ref} className="relative px-8 py-14 md:py-24 overflow-hidden" style={{ background: "var(--bg)" }} onMouseMove={handleMouseMove}>
+      <div ref={sectionRef} className="absolute inset-0 pointer-events-none transition-all duration-300" style={{ background: `radial-gradient(ellipse 60% 60% at ${mouse.x}% ${mouse.y}%, rgba(var(--accent-rgb),0.06) 0%, transparent 70%)` }} />
 
       <div className="max-w-7xl mx-auto relative">
         <div className="flex items-center justify-between mb-16">
@@ -1830,7 +1942,7 @@ function ContactSection() {
 
         {/* Big heading */}
         <div className="mb-12">
-          {[["GOT A", "#EBEBEB"], ["PROJECT?", "#FF3B00"]].map(([text, color], i) => (
+          {[["GOT AN", "var(--ink)"], ["IDEA?", "var(--accent)"]].map(([text, color], i) => (
             <div key={text} className="overflow-hidden">
               <motion.div initial={{ y: "105%" }} animate={visible ? { y: 0 } : {}} transition={{ duration: 1.1, delay: 0.1 + i * 0.1, ease: [0.16, 1, 0.3, 1] }} className="font-black tracking-tighter leading-none break-words" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(2.2rem, 9vw, 9rem)", color, letterSpacing: "-0.04em" }}>
                 {text}
@@ -1846,20 +1958,20 @@ function ContactSection() {
           animate={visible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.9, delay: 0.4 }}
           className="group inline-flex items-center gap-6 pb-3 relative"
-          style={{ borderBottom: "1px solid rgba(235,235,235,0.12)" }}
+          style={{ borderBottom: "1px solid rgba(var(--ink-rgb),0.12)" }}
           onMouseEnter={() => setEmailHovered(true)}
           onMouseLeave={() => setEmailHovered(false)}
           data-hover
         >
-          <span className="font-light tracking-tight" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(0.9rem, 2.2vw, 1.8rem)", color: emailHovered ? "#FF3B00" : "rgba(235,235,235,0.55)", letterSpacing: "-0.02em", transition: "color 0.4s ease" }}>
+          <span className="font-light tracking-tight" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(0.9rem, 2.2vw, 1.8rem)", color: emailHovered ? "var(--accent)" : "rgba(var(--ink-rgb),0.72)", letterSpacing: "-0.02em", transition: "color 0.4s ease" }}>
             <ScrambleText text="dawitdargie2@gmail.com" trigger={visible} />
           </span>
-          <motion.span animate={{ x: emailHovered ? 10 : 0, rotate: emailHovered ? -45 : 0 }} transition={{ duration: 0.35 }} style={{ color: "#FF3B00", fontSize: "1.4rem" }}>→</motion.span>
+          <motion.span animate={{ x: emailHovered ? 10 : 0, rotate: emailHovered ? -45 : 0 }} transition={{ duration: 0.35 }} style={{ color: "var(--accent)", fontSize: "1.4rem" }}>→</motion.span>
         </motion.a>
 
         {/* Response badge */}
         <motion.div initial={{ opacity: 0 }} animate={visible ? { opacity: 1 } : {}} transition={{ delay: 0.6 }} className="flex items-center gap-3 mt-6">
-          <div className="text-xs tracking-[0.2em] px-3 py-1.5" style={{ fontFamily: "JetBrains Mono, monospace", color: "#ff7700", border: "1px solid rgba(200,255,0,0.25)", fontSize: "0.65rem" }}>
+          <div className="text-xs tracking-[0.2em] px-3 py-1.5" style={{ fontFamily: "JetBrains Mono, monospace", color: "var(--accent-warm)", border: "1px solid rgba(200,255,0,0.25)", fontSize: "0.65rem" }}>
             FAST RESPONSE TIME
           </div>
         </motion.div>
@@ -1879,22 +1991,22 @@ function ContactSection() {
               transition={{ type: "spring", stiffness: 400, damping: 18 }}
               onMouseEnter={(e) => {
                 const el = e.currentTarget;
-                el.style.background = "#FF3B00";
-                el.style.borderColor = "#FF3B00";
-                el.style.color = "#030303";
-                el.style.boxShadow = "0 8px 30px rgba(255,59,0,0.4)";
+                el.style.background = "var(--accent)";
+                el.style.borderColor = "var(--accent)";
+                el.style.color = "var(--bg)";
+                el.style.boxShadow = "0 8px 30px rgba(var(--accent-rgb),0.4)";
               }}
               onMouseLeave={(e) => {
                 const el = e.currentTarget;
                 el.style.background = "transparent";
-                el.style.borderColor = "rgba(235,235,235,0.12)";
-                el.style.color = "rgba(235,235,235,0.55)";
+                el.style.borderColor = "rgba(var(--ink-rgb),0.12)";
+                el.style.color = "rgba(var(--ink-rgb),0.72)";
                 el.style.boxShadow = "none";
               }}
               className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center"
               style={{
-                border: "1px solid rgba(235,235,235,0.12)",
-                color: "rgba(235,235,235,0.55)",
+                border: "1px solid rgba(var(--ink-rgb),0.12)",
+                color: "rgba(var(--ink-rgb),0.72)",
                 transition: "background 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease",
               }}
             >
@@ -1911,8 +2023,8 @@ function ContactSection() {
 
 function Footer() {
   return (
-    <footer className="px-8 py-7 flex flex-wrap gap-4 items-center justify-between" style={{ borderTop: "1px solid rgba(235,235,235,0.05)", background: "#030303" }}>
-      <div className="text-xs tracking-[0.2em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(235,235,235,0.14)" }}>©DAWIT DARGIE — ALL RIGHTS RESERVED</div>
+    <footer className="px-8 py-7 flex flex-wrap gap-4 items-center justify-between" style={{ borderTop: "1px solid rgba(var(--ink-rgb),0.05)", background: "var(--bg)" }}>
+      <div className="text-xs tracking-[0.2em]" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.14)" }}>©DAWIT DARGIE — ALL RIGHTS RESERVED</div>
     </footer>
   );
 }
@@ -1929,16 +2041,16 @@ const GLOBAL_CSS = `
   }
   /* Visible scrollbar inside project modal */
   .project-modal-scroll::-webkit-scrollbar { width: 8px; }
-  .project-modal-scroll::-webkit-scrollbar-track { background: rgba(235,235,235,0.04); }
-  .project-modal-scroll::-webkit-scrollbar-thumb { background: rgba(255,59,0,0.45); border-radius: 4px; }
-  .project-modal-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,59,0,0.45) rgba(235,235,235,0.04); }
+  .project-modal-scroll::-webkit-scrollbar-track { background: rgba(var(--ink-rgb),0.04); }
+  .project-modal-scroll::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb),0.45); border-radius: 4px; }
+  .project-modal-scroll { scrollbar-width: thin; scrollbar-color: rgba(var(--accent-rgb),0.45) rgba(var(--ink-rgb),0.04); }
   @keyframes hintBob {
     0%, 100% { transform: translateY(0); opacity: 1; }
     50% { transform: translateY(4px); opacity: 0.65; }
   }
   ::-webkit-scrollbar { width: 2px; }
-  ::-webkit-scrollbar-track { background: #030303; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,59,0,0.35); }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb),0.35); }
   @keyframes scanline {
     from { top: -1%; opacity: 0; }
     10% { opacity: 0.6; }
@@ -2007,6 +2119,20 @@ const GLOBAL_CSS = `
 
 export default function App() {
   const [loaded, setLoaded] = useState(false);
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  // First load is ALWAYS dark — no persistence, no restore (per spec).
+
+  // Keep html/body background in sync (covers overscroll areas + light theme).
+  useEffect(() => {
+    const c = theme === "light" ? "#F4F1E8" : "#030303";
+    document.body.style.backgroundColor = c;
+    document.documentElement.style.backgroundColor = c;
+  }, [theme]);
+
+  const toggleTheme = () =>
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+
   const lenisRef = useRef<Lenis | null>(null);
 
   useEffect(() => {
@@ -2044,7 +2170,8 @@ export default function App() {
   return (
     <>
       <style>{GLOBAL_CSS}</style>
-      <div style={{ background: "#030303" }}>
+      <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <div data-theme={theme} style={{ background: "var(--bg)", transition: "background-color 0.5s ease" }}>
         <GrainOverlay />
         <CustomCursor />
         <AnimatePresence>
@@ -2068,6 +2195,7 @@ export default function App() {
           )}
         </AnimatePresence>
       </div>
+      </ThemeContext.Provider>
     </>
   );
 }
