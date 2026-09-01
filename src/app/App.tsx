@@ -89,7 +89,7 @@ const PROJECTS: Project[] = [
     category: "",
     tags: ["Golang", "Neon PostgreSQL", "Docker", "Render"],
     image: "/perfinsight.webp",
-    accent: "var(--accent)",
+    accent: "#FF3B00",
     short: "PerfInsight is a Go performance intelligence platform that turns application telemetry into actionable insights. showing where time goes, what's causing bottlenecks, and what to fix.",
     problem: "THE PROBLEM: Knowing a Go service is slow isn't enough. developers need to know where, why, and what to fix, which raw telemetry and complex observability tools don't clearly provide.\nTHE SOLUTION: PerfInsight traces, analyzes, and explains request performance with evidence and suggested fixes.\nObserve → Analyze → Explain → Suggest a Fix",
     what: "Traces requests and database operations.\nMeasures performance.\nDetects bottlenecks and common issues.\nExplains findings with evidence.\nSuggests fixes.",
@@ -613,7 +613,7 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
 
 // ─── HERO STACK LINE (ROBOT IMAGE + TRANSPARENT C/K) ─────────────────────────
 
-const ROBOT_IMG = "/robot.jpeg";
+const ROBOT_IMG = "/robot.webp";
 
 function StackLine({ color }: { color: string }) {
   return (
