@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
 import Lenis from "lenis";
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "motion/react";
-import { SiReact, SiNextdotjs, SiTypescript, SiNodedotjs, SiPython, SiPostgresql, SiDocker, SiKubernetes, SiGo, SiShopify } from "react-icons/si";
+import { SiReact, SiNextdotjs, SiTypescript, SiNodedotjs, SiPython, SiPostgresql, SiDocker, SiKubernetes, SiGo, SiShopify, SiUpwork } from "react-icons/si";
 import { FiCloud, FiClock, FiDollarSign, FiRefreshCw, FiAward } from "react-icons/fi";
 import { TbApi } from "react-icons/tb";
 import { FaLinkedinIn, FaGithub, FaInstagram, FaFacebookF, FaTelegram } from "react-icons/fa6";
 
 const SOCIALS = [
   { name: "LinkedIn", href: "https://www.linkedin.com/in/dawit-dargie-30b43b426", Icon: FaLinkedinIn },
+  { name: "Upwork", href: "https://www.upwork.com/freelancers/~019bc6bca616218c7e", Icon: SiUpwork },
   { name: "GitHub", href: "https://github.com/dawitdargie", Icon: FaGithub },
   { name: "Instagram", href: "https://www.instagram.com/dawitdargie1", Icon: FaInstagram },
   { name: "Facebook", href: "https://web.facebook.com/profile.php?id=61588882831030", Icon: FaFacebookF },
@@ -21,45 +22,83 @@ type Theme = "dark" | "light";
 const ThemeContext = createContext<{ theme: Theme; toggleTheme: () => void }>({ theme: "dark", toggleTheme: () => {} });
 function useTheme() { return useContext(ThemeContext); }
 
-// "THEME SWITCH" — switch-style toggle (pill track + sliding knob).
-// Dark theme active  -> knob on the LEFT (click = switch to light)
-// Light theme active -> knob on the RIGHT (click = switch to dark)
+// "THEME SWITCH" — floating circular icon button, pinned to the bottom-right corner
+// on every screen size (position: fixed → visible over every section while scrolling).
+// Dark theme active  -> SUN icon (click = switch to light)
+// Light theme active -> CRESCENT MOON icon (click = switch to dark)
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   const light = theme === "light";
   return (
-    <button
+    <motion.button
       onClick={toggleTheme}
       data-hover
       role="switch"
       aria-checked={light}
       aria-label={light ? "Switch to dark theme" : "Switch to light theme"}
       title={light ? "Dark mode" : "Light mode"}
-      className="relative shrink-0 z-[210] flex items-center transition-transform duration-300"
-      style={{ width: "39px", height: "23px", padding: "2.5px", margin: "-2.5px", background: "transparent", border: "none" }}
+      whileHover={{ scale: 1.06 }}
+      whileTap={{ scale: 0.94 }}
+      className="fixed bottom-6 right-6 z-[320] flex items-center justify-center rounded-full"
+      style={{
+        width: "46px",
+        height: "46px",
+        color: light ? "var(--ink)" : "var(--accent)",
+        background: "rgba(var(--bg-rgb),0.72)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        border: `1px solid ${light ? "rgba(var(--ink-rgb),0.18)" : "rgba(var(--accent-rgb),0.38)"}`,
+        boxShadow: "0 8px 26px rgba(0,0,0,0.32)",
+        transition: "color 0.4s ease, border-color 0.4s ease, background 0.4s ease",
+      }}
     >
-      {/* one-shot click ripple */}
-      <motion.span
-        key={theme}
-        className="absolute rounded-full pointer-events-none"
-        style={{ left: "-1.5px", right: "-1.5px", top: "-1.5px", bottom: "-1.5px", border: "1.5px solid var(--accent)" }}
-        initial={{ scale: 0.4, opacity: 0.7 }}
-        animate={{ scale: 1.15, opacity: 0 }}
-        transition={{ duration: 0.55, ease: "easeOut" }}
-      />
-      {/* track — pinned to the original 34×18 pill, centered within the padded hit area */}
-      <span
-        className="absolute rounded-full"
-        style={{ width: "34px", height: "18px", left: "2.5px", top: "2.5px", border: "1.5px solid rgba(var(--ink-rgb),0.35)", background: "rgba(var(--ink-rgb),0.06)", transition: "border-color 0.35s ease, background 0.35s ease" }}
-      />
-      {/* sliding knob */}
-      <motion.span
-        className="absolute rounded-full"
-        style={{ width: "14px", height: "14px", top: "4px", left: "4px", background: "var(--accent)", boxShadow: "0 1px 3px rgba(0,0,0,0.35)" }}
-        animate={{ x: light ? 15 : 0 }}
-        transition={{ type: "spring", stiffness: 320, damping: 20 }}
-      />
-    </button>
+      {/* Both shapes share one 20×20 box → crossfade, the button is never empty.
+          No mode="wait": exit and enter overlap so a glyph is always on screen. */}
+      <span className="relative block" style={{ width: "20px", height: "20px" }}>
+      <AnimatePresence initial={false}>
+        {light ? (
+          <motion.svg
+            key="moon"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ position: "absolute", inset: 0 }}
+            initial={{ rotate: 60, scale: 0.7, opacity: 0 }}
+            animate={{ rotate: 0, scale: 1, opacity: 1 }}
+            exit={{ rotate: -60, scale: 0.7, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </motion.svg>
+        ) : (
+          <motion.svg
+            key="sun"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ position: "absolute", inset: 0 }}
+            initial={{ rotate: -60, scale: 0.7, opacity: 0 }}
+            animate={{ rotate: 0, scale: 1, opacity: 1 }}
+            exit={{ rotate: 60, scale: 0.7, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </motion.svg>
+        )}
+      </AnimatePresence>
+      </span>
+    </motion.button>
   );
 }
 
@@ -88,7 +127,7 @@ const PROJECTS: Project[] = [
     title: "PERFINSIGHT",
     category: "",
     tags: ["Golang", "Neon PostgreSQL", "Docker", "Render"],
-    image: "/perfinsight.webp",
+    image: "/perfinsight.avif",
     accent: "#FF3B00",
     short: "PerfInsight is a Go performance intelligence platform that turns application telemetry into actionable insights. showing where time goes, what's causing bottlenecks, and what to fix.",
     problem: "THE PROBLEM: Knowing a Go service is slow isn't enough. developers need to know where, why, and what to fix, which raw telemetry and complex observability tools don't clearly provide.\nTHE SOLUTION: PerfInsight traces, analyzes, and explains request performance with evidence and suggested fixes.\nObserve → Analyze → Explain → Suggest a Fix",
@@ -102,23 +141,24 @@ const PROJECTS: Project[] = [
     id: 3,
     title: "HACKSHELF",
     category: "",
-    tags: ["WebSockets", "Redis", "Docker"],
-    image: "hackshelf.webp",
+    tags: ["Next.js", "Golang", "TanStack", "PostgreSQL", "Docker"],
+    image: "/hackshelf.avif",
     accent: "#6B2FFA",
-    short: "A multiplayer workspace where distributed teams co-edit documents, whiteboards, and tasks with conflict-free real-time sync.",
-    what: "NEXUS is a real-time collaboration hub where teams co-edit documents and boards simultaneously, seeing every teammate's cursor and changes instantly.",
-    how: "Edits are captured as operations and synced over WebSockets using CRDT conflict resolution, fanned out through a Redis pub/sub layer so every client converges to the same state even after disconnects.",
-    use: "Create a workspace, invite teammates with a share link, and start editing together — everything syncs live with full version history you can rewind at any time.",
-    built: "Node.js WebSocket gateway, Redis pub/sub and presence tracking, Yjs CRDTs for conflict-free merging, React client canvas editor, all containerized with Docker Compose.",
-    live: "https://example.com",
-    github: "https://github.com/",
+    short: "Online bookstore built for hackers and penetration testers, with complete books readable directly in the browser.",
+    problem: "THE PROBLEM: Finding quality cybersecurity books that are free, legally redistributable, and easy to read can be difficult, while existing resources are often scattered across different sites and formats.\nTHE SOLUTION: HackShelf brings legally redistributable books into one platform with search, discovery, reading progress, bookmarks, ratings, and personal libraries.\nDiscover → Read → Save → Continue",
+    what: "Provides complete, legally redistributable books.\nHelps discover books through search, filters, and categories.\nTracks reading progress and bookmarks.\nSupports ratings and reviews.\nManages the catalog through a secure admin panel.",
+    how: "Next.js Frontend → Go API → PostgreSQL (Auth / Books / Library)\n\nThe frontend communicates with a Go API, which handles authentication, books, reading progress, bookmarks, ratings, reviews, and admin operations. PostgreSQL stores the application data.",
+    use: "Browse or search for a book, open it in the browser, and create an account to save books, track progress, bookmark chapters, and review books.\nSee the README for complete setup and usage instructions.",
+    built: "Frontend - Next.js application for the catalog, reader, library, and admin UI.\nBackend - Go API handling business logic, authentication, and catalog operations.\nDatabase - PostgreSQL for users, books, chapters, progress, bookmarks, ratings, and reviews.\nSecurity - Hashed passwords, token rotation, rate limiting, and role-based admin access.",
+    live: "https://hackshelf.vercel.app",
+    github: "https://github.com/dawitdargie/hackshelf",
   },
   {
     id: 4,
     title: "SYSTEMLENS",
     category: "",
     tags: ["TypeScript", "Next.js", "Mermaid.js", "GitHub & Groq APIs"],
-    image: "/systemlens.webp",
+    image: "/systemlens.avif",
     accent: "#00D4FF",
     short: "SystemLens makes unfamiliar GitHub repositories easier to understand by turning complex codebases into clear architecture(with visual diagram), explanations, and code-grounded answers.",
     problem: "THE PROBLEM: Understanding an unfamiliar codebase can take days, with hundreds of files and technical details that don't make sense to every audience.\nTHE SOLUTION: SystemLens analyzes a GitHub repository and turns it into structured, role-specific explanations, architecture diagrams, and code-grounded answers.\nAnalyze → Understand → Explore → Ask",
@@ -503,9 +543,8 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
         <button onClick={() => onScrollTo("top")} className="text-xs tracking-[0.25em] font-medium transition-opacity hover:opacity-60" style={{ fontFamily: "JetBrains Mono, monospace", color: "var(--accent)" }} data-hover>DAWIT</button>
       </div>
 
-      {/* Right cluster: theme toggle · nav links · mobile menu */}
+      {/* Right cluster: nav links · mobile menu */}
       <div className="flex items-center">
-        <div className="mr-3 md:mr-4"><ThemeToggle /></div>
       {/* Desktop nav */}
       <div className="hidden md:flex items-center gap-3">
         {NAV_SECTIONS.map(({ num, label, id }) => {
@@ -613,7 +652,7 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
 
 // ─── HERO STACK LINE (ROBOT IMAGE + TRANSPARENT C/K) ─────────────────────────
 
-const ROBOT_IMG = "/robot.webp";
+const ROBOT_IMG = "/robot.avif";
 
 function StackLine({ color }: { color: string }) {
   return (
@@ -822,7 +861,7 @@ if (width < minWidth) {
     const dark = new Image();
     dark.src = ROBOT_IMG;
     const light = new Image();
-    light.src = "/robotw-blend.webp";
+    light.src = "/robotw-blend.avif";
   }, []);
 
   return (
@@ -872,6 +911,8 @@ if (width < minWidth) {
             src={ROBOT_IMG}
             alt="Robot"
             draggable={false}
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-contain"
             style={{
               position: "absolute",
@@ -888,7 +929,7 @@ if (width < minWidth) {
           />
           {/* Light-theme robot */}
           <img
-            src="/robotw-blend.webp"
+            src="/robotw-blend.avif"
             alt=""
             aria-hidden="true"
             draggable={false}
@@ -1063,7 +1104,7 @@ function PortraitChamber({ visible }: { visible: boolean }) {
         <div className="absolute inset-0" style={{ animation: "heroImgFloat 9s ease-in-out infinite" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/dawit.webp"
+            src="/dawit.avif"
             alt="Dawit Dargie"
             draggable={false}
             loading="lazy"
@@ -2174,6 +2215,7 @@ export default function App() {
       <div data-theme={theme} style={{ background: "var(--bg)", transition: "background-color 0.5s ease" }}>
         <GrainOverlay />
         <CustomCursor />
+        <ThemeToggle />
         <AnimatePresence>
           {!loaded && <Preloader key="preloader" onDone={() => setLoaded(true)} />}
         </AnimatePresence>
