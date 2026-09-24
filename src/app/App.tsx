@@ -446,18 +446,27 @@ function ScrollProgress() {
 
 // ─── PRELOADER ────────────────────────────────────────────────────────────────
 
+// Preloader pacing. Every frame of the animation is unchanged — only the cadence
+// is faster, because the whole page is gated behind `onDone`, which makes this
+// the single biggest LCP cost on mobile.
+//   before: ~33 ticks @35ms (~1.17s) + 500ms hold  ≈ 1.67s
+//   after:  ~33 ticks @20ms (~0.67s) + 150ms hold  ≈ 0.82s
+const PRELOADER_TICK_MS = 20;
+const PRELOADER_GLITCH_MS = 40;
+const PRELOADER_HOLD_MS = 150;
+
 function Preloader({ onDone }: { onDone: () => void }) {
   const [count, setCount] = useState(0);
   const [glitch, setGlitch] = useState("   ");
   const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
   useEffect(() => {
-    const gi = setInterval(() => { setGlitch(Array.from({ length: 3 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join("")); }, 70);
+    const gi = setInterval(() => { setGlitch(Array.from({ length: 3 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join("")); }, PRELOADER_GLITCH_MS);
     let n = 0;
     const ci = setInterval(() => {
       n += Math.floor(Math.random() * 5) + 1;
-      if (n >= 100) { n = 100; clearInterval(ci); clearInterval(gi); setGlitch("   "); setTimeout(onDone, 500); }
+      if (n >= 100) { n = 100; clearInterval(ci); clearInterval(gi); setGlitch("   "); setTimeout(onDone, PRELOADER_HOLD_MS); }
       setCount(n);
-    }, 35);
+    }, PRELOADER_TICK_MS);
     return () => { clearInterval(gi); clearInterval(ci); };
   }, [onDone]);
   return (
@@ -653,6 +662,7 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
 // ─── HERO STACK LINE (ROBOT IMAGE + TRANSPARENT C/K) ─────────────────────────
 
 const ROBOT_IMG = "/robot.avif";
+const ROBOT_LIGHT_IMG = "/robotw-blend.avif";
 
 function StackLine({ color }: { color: string }) {
   return (
@@ -748,6 +758,7 @@ function HeroSection() {
   const parallaxRef = useRef<HTMLDivElement>(null);
   const [imgStyle, setImgStyle] = useState<React.CSSProperties>({ display: "none" });
   const [hovered, setHovered] = useState(false);
+  const [lightRobotReady, setLightRobotReady] = useState(false);
   const target = useRef({ x: 0, y: 0 });
   const cur = useRef({ x: 0, y: 0 });
   const raf = useRef(0);
@@ -856,12 +867,29 @@ if (width < minWidth) {
     };
   }, []);
 
-  // Preload both robot images so theme swaps are instant (no network lag).
+  // Dark robot: preloaded with the HTML (<link rel="preload"> in layout.tsx) and
+  // always in the DOM, so it needs no JS warm-up.
+  // Light robot (115 KB) is invisible on first paint because the first theme is
+  // always dark. Warm it once the page is idle: the theme crossfade still feels
+  // instant, but the bytes are kept off the initial mobile load.
   useEffect(() => {
-    const dark = new Image();
-    dark.src = ROBOT_IMG;
-    const light = new Image();
-    light.src = "/robotw-blend.avif";
+    let cancelled = false;
+    const warm = () => {
+      if (cancelled) return;
+      const light = new Image();
+      light.decoding = "async";
+      light.src = ROBOT_LIGHT_IMG;
+      light.decode?.().catch(() => {});
+      setLightRobotReady(true);
+    };
+    const idleId = typeof window.requestIdleCallback === "function"
+      ? window.requestIdleCallback(warm, { timeout: 2500 })
+      : window.setTimeout(warm, 1200);
+    return () => {
+      cancelled = true;
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
+      else window.clearTimeout(idleId);
+    };
   }, []);
 
   return (
@@ -927,26 +955,31 @@ if (width < minWidth) {
               filter: theme === "light" ? "none" : hovered ? "brightness(1.1)" : "brightness(0.9)",
             }}
           />
-          {/* Light-theme robot */}
-          <img
-            src="/robotw-blend.avif"
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            className="w-full h-full object-contain"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              objectPosition: "center bottom",
-              transform: "scale(1)",
-              opacity: theme === "light" ? 1 : 0,
-              transition: "opacity 0s",
-              filter: "none",
-            }}
-          />
+          {/* Light-theme robot — mounted on the first light-theme render, or once
+              the idle warm-up has cached it. Mounting it unconditionally means the
+              browser fetches 115 KB that is invisible on the default dark theme. */}
+          {(theme === "light" || lightRobotReady) && (
+            <img
+              src={ROBOT_LIGHT_IMG}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              decoding="async"
+              className="w-full h-full object-contain"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                objectPosition: "center bottom",
+                transform: "scale(1)",
+                opacity: theme === "light" ? 1 : 0,
+                transition: "opacity 0s",
+                filter: "none",
+              }}
+            />
+          )}
         </div>
       </div>
 
