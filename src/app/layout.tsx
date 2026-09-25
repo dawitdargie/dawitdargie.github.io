@@ -80,10 +80,16 @@ export const metadata: Metadata = {
 // count is already climbing. It stops at 99 and hands the live value over —
 // React adopts it, clears the glitch, holds 150ms and runs the 0.9s wipe, so the
 // choreography and every frame of the animation stay owned by the component.
+//
+// FAILSAFE (mobile): if React has not called stop() within BOOT_STUCK_MS after we
+// first hit 99, continue 99→100 in the DOM so the number never sits on "099" while
+// chunks download. React's Preloader (App.tsx) still owns the wipe via its own
+// failsafe; this only keeps the visible counter honest on slow networks.
 const BOOT_COUNTER_JS = `
 (function () {
   var CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
   var timers = [];
+  var BOOT_STUCK_MS = 1800;
   var state = { count: 0, glitch: "   ", stopped: false, stop: function () {} };
   window.__pl = state;
   function pad(n) { return n < 10 ? "00" + n : n < 100 ? "0" + n : "" + n; }
@@ -93,7 +99,10 @@ const BOOT_COUNTER_JS = `
     var glitchEl = document.querySelector("[data-boot-glitch]");
     var bar = document.querySelector("[data-boot-bar]");
     var n = 0;
+    var hit99At = 0;
+    var finishing = false;
     timers.push(setInterval(function () {
+      if (state.stopped) return;
       var g = "";
       for (var i = 0; i < 3; i++) g += CHARS.charAt(Math.floor(Math.random() * CHARS.length));
       state.glitch = g;
@@ -101,8 +110,32 @@ const BOOT_COUNTER_JS = `
     }, 40));
     timers.push(setInterval(function () {
       if (state.stopped) return;
+      if (finishing) {
+        n += 1 + Math.floor(Math.random() * 3);
+        if (n >= 100) {
+          n = 100;
+          state.count = 100;
+          num.textContent = "100";
+          if (bar) bar.style.transform = "scaleX(1)";
+          if (glitchEl) glitchEl.textContent = "   ";
+          state.glitch = "   ";
+          state.stopped = true;
+          for (var i = 0; i < timers.length; i++) clearInterval(timers[i]);
+          timers.length = 0;
+          return;
+        }
+        state.count = n;
+        num.textContent = pad(n);
+        if (bar) bar.style.transform = "scaleX(" + n / 100 + ")";
+        return;
+      }
       n += 1 + Math.floor(Math.random() * 5);
-      if (n > 99) n = 99; /* the last 1% belongs to React */
+      if (n > 99) n = 99;
+      if (n === 99 && hit99At === 0) hit99At = Date.now();
+      if (n === 99 && hit99At && (Date.now() - hit99At) >= BOOT_STUCK_MS) {
+        finishing = true;
+        return;
+      }
       state.count = n;
       num.textContent = pad(n);
       if (bar) bar.style.transform = "scaleX(" + n / 100 + ")";
