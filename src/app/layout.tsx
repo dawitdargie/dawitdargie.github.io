@@ -2,16 +2,24 @@ import { Unbounded, Inter, JetBrains_Mono } from "next/font/google";
 import type { Metadata } from "next";
 import "./globals.css";
 
+// Weights are trimmed to what the page actually renders (every Unbounded element
+// carries font-black/900, font-bold/700 or font-light/300; Inter uses 300/400/500;
+// JetBrains Mono uses 400/500). Unbounded 200+400 and Inter 600 were declared but
+// never painted — each one shipped 5-7 extra @font-face subset rules.
+//
+// 900 is listed FIRST on purpose: next/font preloads the first declared weight, and
+// 900 is what the hero heading (the LCP text) is painted in. Before this change the
+// single font preload was Unbounded 200 — a weight the page never renders.
 const unbounded = Unbounded({
   subsets: ["latin"],
-  weight: ["200", "300", "400", "700", "900"],
+  weight: ["900", "700", "300"],
   variable: "--font-unbounded",
   display: "swap",
 });
 
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500"],
   variable: "--font-inter",
   display: "swap",
   // Body text isn't the LCP element — don't spend critical-path bandwidth on it.
@@ -20,7 +28,7 @@ const inter = Inter({
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
+  weight: ["400", "500"],
   variable: "--font-jetbrains-mono",
   display: "swap",
   // Only used for small mono labels — keep it off the critical path.
@@ -65,6 +73,56 @@ export const metadata: Metadata = {
   },
 };
 
+// ─── INLINE BOOT COUNTER ─────────────────────────────────────────────────────
+// Runs at HTML-parse time, long before the ~255 KB of JS is parsed, and drives the
+// exact same counter the Preloader component uses (20ms ticks, random 1..5 steps).
+// That is what stops the number sitting frozen at 000 while React downloads: the
+// count is already climbing. It stops at 99 and hands the live value over —
+// React adopts it, clears the glitch, holds 150ms and runs the 0.9s wipe, so the
+// choreography and every frame of the animation stay owned by the component.
+const BOOT_COUNTER_JS = `
+(function () {
+  var CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
+  var timers = [];
+  var state = { count: 0, glitch: "   ", stopped: false, stop: function () {} };
+  window.__pl = state;
+  function pad(n) { return n < 10 ? "00" + n : n < 100 ? "0" + n : "" + n; }
+  function start() {
+    var num = document.querySelector("[data-boot-count]");
+    if (!num) return false;
+    var glitchEl = document.querySelector("[data-boot-glitch]");
+    var bar = document.querySelector("[data-boot-bar]");
+    var n = 0;
+    timers.push(setInterval(function () {
+      var g = "";
+      for (var i = 0; i < 3; i++) g += CHARS.charAt(Math.floor(Math.random() * CHARS.length));
+      state.glitch = g;
+      if (glitchEl) glitchEl.textContent = g;
+    }, 40));
+    timers.push(setInterval(function () {
+      if (state.stopped) return;
+      n += 1 + Math.floor(Math.random() * 5);
+      if (n > 99) n = 99; /* the last 1% belongs to React */
+      state.count = n;
+      num.textContent = pad(n);
+      if (bar) bar.style.transform = "scaleX(" + n / 100 + ")";
+    }, 20));
+    state.stop = function () {
+      state.stopped = true;
+      for (var i = 0; i < timers.length; i++) clearInterval(timers[i]);
+      timers.length = 0;
+    };
+    return true;
+  }
+  var tries = 0;
+  function look() {
+    if (start() || ++tries > 600) return;
+    requestAnimationFrame(look);
+  }
+  requestAnimationFrame(look);
+})();
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -108,6 +166,9 @@ export default function RootLayout({
           type="image/avif"
           fetchPriority="high"
         />
+
+        {/* Starts the preloader count at HTML-parse time (see BOOT_COUNTER_JS). */}
+        <script dangerouslySetInnerHTML={{ __html: BOOT_COUNTER_JS }} />
       </head>
       <body
         suppressHydrationWarning

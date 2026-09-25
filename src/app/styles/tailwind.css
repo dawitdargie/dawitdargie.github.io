@@ -1,4 +1,9 @@
-@import 'tailwindcss';
+/* Tailwind v4 scans the whole project by default — even with @source set — which
+   pulled ~1000 rules belonging to the 94 unused components/ui/* files (cmdk,
+   radix, sidebar, recharts…) into the stylesheet. Only these three files render
+   any markup, so scan exactly them (source(none) disables the automatic scan).
+   NOTE: any new file that renders classNames must be added here. */
+@import 'tailwindcss' source(none);
 @source '../App.tsx';
 @source '../layout.tsx';
 @source '../page.tsx';
