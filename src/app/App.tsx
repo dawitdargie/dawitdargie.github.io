@@ -532,7 +532,7 @@ const NAV_SECTIONS = [
   { num: "07", label: "CONTACT", id: "contact" },
 ];
 
-function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
+function Nav({ onScrollTo, sectionsReady }: { onScrollTo: (id: string) => void; sectionsReady: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -544,23 +544,45 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
     return () => window.removeEventListener("scroll", h);
   }, []);
 
-  // Track active section via IntersectionObserver
+  // Track active section via IntersectionObserver.
+  //
+  // The observer MUST be (re)built after the sections exist: Nav ships in the
+  // static HTML while everything below the fold mounts when the preloader hands
+  // over (`sectionsReady`), so resolving the elements at first mount would only
+  // ever find #home and no other link could expand.
+  //
+  // Cost: `attach` is a no-op unless the number of sections actually changed, so
+  // this is at most two rebuilds per page load (1 target, then 7). The callback
+  // never reads layout — only isIntersecting/target.id — and setActiveId bails out
+  // when the id is unchanged, so a full-page scroll costs one small Nav re-render
+  // per section boundary.
   useEffect(() => {
-    const sections = NAV_SECTIONS.map(s => document.getElementById(s.id)).filter(Boolean) as HTMLElement[];
-    if (sections.length === 0) return;
-    // Detect whichever section crosses a thin band at the vertical middle of the viewport.
-    // Works uniformly for short and tall sections (ratio-based thresholds fail on tall ones).
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(e => {
-          if (e.isIntersecting) setActiveId(e.target.id);
-        });
-      },
-      { rootMargin: "-45% 0px -50% 0px", threshold: 0 }
-    );
-    sections.forEach(s => obs.observe(s));
-    return () => obs.disconnect();
-  }, []);
+    let obs: IntersectionObserver | null = null;
+    let attached = 0;
+    const attach = () => {
+      const sections = NAV_SECTIONS.map(s => document.getElementById(s.id)).filter(Boolean) as HTMLElement[];
+      if (sections.length === 0 || sections.length === attached) return;
+      attached = sections.length;
+      obs?.disconnect();
+      // Detect whichever section crosses a thin band at the vertical middle of the
+      // viewport. Works uniformly for short and tall sections (ratio-based
+      // thresholds fail on tall ones).
+      obs = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(e => {
+            if (e.isIntersecting) setActiveId(prev => (prev === e.target.id ? prev : e.target.id));
+          });
+        },
+        { rootMargin: "-45% 0px -50% 0px", threshold: 0 }
+      );
+      sections.forEach(s => obs?.observe(s));
+    };
+    attach();
+    // Safety net: if the sections mount later (or the page height changes), re-attach.
+    const ro = new ResizeObserver(attach);
+    ro.observe(document.body);
+    return () => { ro.disconnect(); obs?.disconnect(); };
+  }, [sectionsReady]);
 
   const isExpanded = (id: string) => hoveredId === id || activeId === id;
 
@@ -2340,7 +2362,7 @@ export default function App() {
             their look or timing changes). */}
         <motion.div key="site" initial={false} animate={{ opacity: 1 }}>
           <ScrollProgress />
-          <Nav onScrollTo={scrollTo} />
+          <Nav onScrollTo={scrollTo} sectionsReady={loaded} />
           <HeroSection />
           {loaded && (
             <>
