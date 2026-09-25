@@ -330,9 +330,15 @@ function ScrollProgress() {
 // until hydration. The boot script stops at 99 and React adopts the live value
 // below, so the final 1%, the glitch clear, the hold and the wipe stay owned
 // here, exactly as before.
+//
+// FAILSAFE: on slow mobile the JS can take seconds after the boot script has
+// already parked at 99. Without a cap, the counter sits on "099" until React
+// hydrates. PRELOADER_FAILSAFE_MS forces 99→100 + onDone so the wipe always
+// starts within ~2.2s of this component mounting — same look, no hang.
 const PRELOADER_TICK_MS = 20;
 const PRELOADER_GLITCH_MS = 40;
 const PRELOADER_HOLD_MS = 150;
+const PRELOADER_FAILSAFE_MS = 2200;
 
 // Handoff surface published by the inline boot script (see layout.tsx).
 type BootCounter = { count: number; glitch: string; stopped: boolean; stop: () => void };
@@ -345,6 +351,16 @@ function Preloader({ onDone }: { onDone: () => void }) {
   const [count, setCount] = useState(0);
   const [glitch, setGlitch] = useState("   ");
   const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
+  const finished = useRef(false);
+
+  const finish = (clearGlitch: boolean) => {
+    if (finished.current) return;
+    finished.current = true;
+    setCount(100);
+    if (clearGlitch) setGlitch("   ");
+    setTimeout(onDone, PRELOADER_HOLD_MS);
+  };
+
   // Adopt whatever the boot script has already counted, then continue it here.
   useLayoutEffect(() => {
     const boot = bootCounter();
@@ -353,16 +369,50 @@ function Preloader({ onDone }: { onDone: () => void }) {
     setCount(boot.count);
     if (boot.glitch) setGlitch(boot.glitch);
   }, []);
+
   useEffect(() => {
-    const gi = setInterval(() => { setGlitch(Array.from({ length: 3 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join("")); }, PRELOADER_GLITCH_MS);
+    const gi = setInterval(() => {
+      if (finished.current) return;
+      setGlitch(
+        Array.from({ length: 3 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join("")
+      );
+    }, PRELOADER_GLITCH_MS);
+
     let n = bootCounter()?.count ?? 0;
+    // If boot already reached 99 (common on mobile: HTML + boot ran, JS late),
+    // start the final ticks immediately instead of waiting another interval.
+    if (n >= 99) n = 99;
+
     const ci = setInterval(() => {
+      if (finished.current) return;
       n += Math.floor(Math.random() * 5) + 1;
-      if (n >= 100) { n = 100; clearInterval(ci); clearInterval(gi); setGlitch("   "); setTimeout(onDone, PRELOADER_HOLD_MS); }
+      if (n >= 100) {
+        n = 100;
+        clearInterval(ci);
+        clearInterval(gi);
+        finish(true);
+        return;
+      }
       setCount(n);
     }, PRELOADER_TICK_MS);
-    return () => { clearInterval(gi); clearInterval(ci); };
+
+    // Never leave the user staring at 099 while chunks download on slow 4G.
+    const failsafe = window.setTimeout(() => {
+      clearInterval(ci);
+      clearInterval(gi);
+      finish(true);
+    }, PRELOADER_FAILSAFE_MS);
+
+    return () => {
+      clearInterval(gi);
+      clearInterval(ci);
+      window.clearTimeout(failsafe);
+    };
+    // finish() is guarded by finished ref so double-fire is safe even if onDone
+    // identity changes between parent re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onDone]);
+
   return (
     <motion.div className="fixed inset-0 z-[9000] flex flex-col items-center justify-center overflow-hidden" style={{ background: "var(--bg)", clipPath: "inset(0 0 0% 0)" }} exit={{ clipPath: "inset(0 0 100% 0)", transition: { duration: 0.9, ease: [0.76, 0, 0.24, 1] } }}>
       <div className="absolute left-0 right-0 top-0 h-px z-10 pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, var(--accent), transparent)", animation: "scanlineY 3s linear infinite", opacity: 0.6 }} />
