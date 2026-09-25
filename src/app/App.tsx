@@ -858,10 +858,20 @@ if (width < minWidth) {
       
       <FloatingCode />
 
-      {/* Robot image panel */}
+      {/* Robot image panel.
+          `suppressHydrationWarning` is deliberate, not a silencer for a real bug:
+          HERO_PANEL_BOOT_JS (see layout.tsx) positions this box during HTML parsing
+          so the robot can paint before hydration, which means the DOM already holds
+          a style attribute React did not write. React's values differ from it only
+          by CSSOM rounding (562.516px vs 562.5156364440918) and by string-vs-number
+          form, so nothing needs patching and there is nothing to warn about — same
+          reason the preloader's data-boot-* elements carry this prop. Geometry is
+          still owned by the re-measure below (rAF + ResizeObserver + fonts.ready),
+          so a stale position could not persist either way. */}
       <div
         ref={imgRef}
         data-hero-panel=""
+        suppressHydrationWarning
         className="pointer-events-none"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}

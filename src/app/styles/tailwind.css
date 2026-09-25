@@ -3,7 +3,7 @@
    radix, sidebar, recharts…) into the stylesheet. Only these files render any
    markup, so scan exactly them (source(none) disables the automatic scan).
    NOTE: any new file that renders classNames must be added here. */
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
 @source '../App.tsx';
 @source '../Sections.tsx';
 @source '../layout.tsx';
