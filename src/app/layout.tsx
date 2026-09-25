@@ -123,6 +123,78 @@ const BOOT_COUNTER_JS = `
 })();
 `;
 
+// ─── INLINE HERO-PANEL MEASURE ───────────────────────────────────────────────
+// The hero image panel's geometry lives in the middle of the "C" of STACK, so it
+// can only be measured once the hero has been laid out and the Unbounded file has
+// swapped in — which used to mean "when React's effect runs", i.e. after ~2s of
+// downloading + evaluating 700 KB of JS. Until then the panel is `display:none`,
+// so the robot (the LCP element) stayed unpainted even though its 18 KB AVIF had
+// been preloaded and was sitting ready.
+//
+// This runs during HTML parsing instead: the identical arithmetic on the identical
+// boxes, one rAF after `document.fonts.ready` (the same signal the React effect
+// re-measures on), and publishes the result on `window.__heroPanel` for
+// HeroSection to adopt as its initial state (see heroPanelBoot in App.tsx).
+// Because React's first render then matches the DOM this script already styled,
+// hydration neither repaints nor corrects anything, and the image is on screen
+// ~0.8s earlier. Every failure mode is a no-op: if the elements are missing or the
+// width is not measurable, nothing is written and React behaves exactly as it did
+// before. A wrong measurement cannot be seen either — the preloader overlay
+// covers the viewport until long after hydration has re-measured.
+const HERO_PANEL_BOOT_JS = `
+(function () {
+  function run() {
+    var panel = document.querySelector("[data-hero-panel]");
+    var section = document.getElementById("home");
+    var c = document.getElementById("stack-c");
+    if (!panel || !section || !c) return;
+    var sectionRect = section.getBoundingClientRect();
+    var cRect = c.getBoundingClientRect();
+    var sectionW = sectionRect.width;
+    var rightInset = Math.max(12, sectionW * 0.03);
+    var left = cRect.left - sectionRect.left + cRect.width / 2;
+    var width = sectionW - left - rightInset;
+    var minWidth = Math.min(320, sectionW * 0.58);
+    if (width < minWidth) {
+      width = minWidth;
+      left = sectionW - rightInset - width;
+      var minLeft = sectionW * 0.22;
+      if (left < minLeft) {
+        left = minLeft;
+        width = sectionW - rightInset - left;
+      }
+    }
+    if (width <= 8) return;
+    panel.style.display = "block";
+    panel.style.position = "absolute";
+    panel.style.left = left + "px";
+    panel.style.width = width + "px";
+    panel.style.top = "2.25rem";
+    panel.style.bottom = "0";
+    panel.style.zIndex = "0";
+    panel.style.pointerEvents = "none";
+    panel.style.overflow = "hidden";
+    window.__heroPanel = {
+      display: "block",
+      position: "absolute",
+      left: left,
+      width: width,
+      top: "2.25rem",
+      bottom: 0,
+      zIndex: 0,
+      pointerEvents: "none",
+      overflow: "hidden"
+    };
+  }
+  var fonts = document.fonts;
+  if (fonts && fonts.ready && fonts.status !== "loaded") {
+    fonts.ready.then(function () { requestAnimationFrame(run); }).catch(function () { requestAnimationFrame(run); });
+  } else {
+    requestAnimationFrame(run);
+  }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -156,9 +228,9 @@ export default function RootLayout({
           }}
         />
 
-        {/* LCP image: the hero robot. Dark theme is always the first paint,
-            and the image is revealed by JS after the preloader, so start the
-            download with the HTML instead of waiting for hydration. */}
+        {/* LCP image: the hero robot. Dark theme is always the first paint, the
+            panel is positioned by the inline script below (HERO_PANEL_BOOT_JS)
+            during HTML parsing, so start the download with the HTML. */}
         <link
           rel="preload"
           as="image"
@@ -175,6 +247,11 @@ export default function RootLayout({
         className={`${unbounded.className} ${inter.className} ${jetbrainsMono.className}`}
       >
         {children}
+
+        {/* Positions the hero image panel before hydration (see HERO_PANEL_BOOT_JS).
+            A classic script at the end of the body content, so it executes after the
+            hero markup exists but before the app's JS has even been requested. */}
+        <script dangerouslySetInnerHTML={{ __html: HERO_PANEL_BOOT_JS }} />
       </body>
     </html>
   );
