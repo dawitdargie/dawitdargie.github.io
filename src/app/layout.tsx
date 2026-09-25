@@ -14,6 +14,8 @@ const inter = Inter({
   weight: ["300", "400", "500", "600"],
   variable: "--font-inter",
   display: "swap",
+  // Body text isn't the LCP element — don't spend critical-path bandwidth on it.
+  preload: false,
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -21,6 +23,8 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["300", "400", "500"],
   variable: "--font-jetbrains-mono",
   display: "swap",
+  // Only used for small mono labels — keep it off the critical path.
+  preload: false,
 });
 
 export const metadata: Metadata = {

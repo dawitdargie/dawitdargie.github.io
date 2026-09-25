@@ -446,14 +446,16 @@ function ScrollProgress() {
 
 // ─── PRELOADER ────────────────────────────────────────────────────────────────
 
-// Preloader pacing. Every frame of the animation is unchanged — only the cadence
-// is faster, because the whole page is gated behind `onDone`, which makes this
-// the single biggest LCP cost on mobile.
-//   before: ~33 ticks @35ms (~1.17s) + 500ms hold  ≈ 1.67s
-//   after:  ~33 ticks @20ms (~0.67s) + 150ms hold  ≈ 0.82s
+// Preloader pacing. The counter is driven by *elapsed time since navigation
+// start* rather than by tick count: the page content already ships in the static
+// HTML, so on a slow device hydration can land after the budget has passed — in
+// that case the number jumps straight to 100 instead of sitting at 000 while the
+// JS chunks arrive.
+//   budget: 600ms of counting + 120ms hold, then the wipe (0.6s)
 const PRELOADER_TICK_MS = 20;
 const PRELOADER_GLITCH_MS = 40;
-const PRELOADER_HOLD_MS = 150;
+const PRELOADER_BUDGET_MS = 600;
+const PRELOADER_HOLD_MS = 120;
 
 function Preloader({ onDone }: { onDone: () => void }) {
   const [count, setCount] = useState(0);
@@ -461,17 +463,23 @@ function Preloader({ onDone }: { onDone: () => void }) {
   const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
   useEffect(() => {
     const gi = setInterval(() => { setGlitch(Array.from({ length: 3 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join("")); }, PRELOADER_GLITCH_MS);
-    let n = 0;
+    const t0 = performance.now(); // measured from navigation start
+    // Start from the time already spent loading before hydration: on a slow device
+    // the counter is already at 100 and the preloader ends immediately instead of
+    // making the user watch a fake count after the JS has arrived.
+    let n = Math.min(100, Math.floor((t0 / PRELOADER_BUDGET_MS) * 100));
+    setCount(n);
     const ci = setInterval(() => {
-      n += Math.floor(Math.random() * 5) + 1;
-      if (n >= 100) { n = 100; clearInterval(ci); clearInterval(gi); setGlitch("   "); setTimeout(onDone, PRELOADER_HOLD_MS); }
+      const scheduled = Math.min(100, Math.floor((performance.now() / PRELOADER_BUDGET_MS) * 100));
+      n = Math.min(100, Math.max(n + Math.floor(Math.random() * 5) + 1, scheduled));
       setCount(n);
+      if (n >= 100) { clearInterval(ci); clearInterval(gi); setGlitch("   "); setTimeout(onDone, PRELOADER_HOLD_MS); }
     }, PRELOADER_TICK_MS);
     return () => { clearInterval(gi); clearInterval(ci); };
   }, [onDone]);
   return (
-    <motion.div className="fixed inset-0 z-[9000] flex flex-col items-center justify-center overflow-hidden" style={{ background: "var(--bg)", clipPath: "inset(0 0 0% 0)" }} exit={{ clipPath: "inset(0 0 100% 0)", transition: { duration: 0.9, ease: [0.76, 0, 0.24, 1] } }}>
-      <div className="absolute left-0 right-0 h-px z-10 pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, var(--accent), transparent)", animation: "scanline 3s linear infinite", top: `${count}%`, opacity: 0.6 }} />
+    <motion.div className="fixed inset-0 z-[9000] flex flex-col items-center justify-center overflow-hidden" style={{ background: "var(--bg)", clipPath: "inset(0 0 0% 0)" }} exit={{ clipPath: "inset(0 0 100% 0)", transition: { duration: 0.6, ease: [0.76, 0, 0.24, 1] } }}>
+      <div className="absolute left-0 right-0 top-0 h-px z-10 pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, var(--accent), transparent)", animation: "scanlineY 3s linear infinite", opacity: 0.6 }} />
       <div className="relative select-none">
         <div className="font-black tabular-nums" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "clamp(5rem, 20vw, 18rem)", color: "var(--ink)", letterSpacing: "-0.05em", lineHeight: 1 }}>
           {String(count).padStart(3, "0")}
@@ -481,7 +489,7 @@ function Preloader({ onDone }: { onDone: () => void }) {
         </div>
       </div>
       <div className="mt-8 w-72 overflow-hidden" style={{ height: "1px", background: "rgba(var(--ink-rgb),0.08)" }}>
-        <motion.div className="h-full" style={{ background: "var(--accent)" }} animate={{ width: `${count}%` }} transition={{ duration: 0.08, ease: "linear" }} />
+        <motion.div className="h-full w-full" style={{ background: "var(--accent)", transformOrigin: "left" }} animate={{ scaleX: count / 100 }} transition={{ duration: 0.08, ease: "linear" }} />
       </div>
       <div className="mt-5 text-xs tracking-[0.3em] uppercase" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.25)" }}>
         SYS_INIT — LOADING PORTFOLIO
@@ -662,7 +670,7 @@ function Nav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
 // ─── HERO STACK LINE (ROBOT IMAGE + TRANSPARENT C/K) ─────────────────────────
 
 const ROBOT_IMG = "/robot.avif";
-const ROBOT_LIGHT_IMG = "/robotw-blend.avif";
+const ROBOT_LIGHT_IMG = "/robotw.avif";
 
 function StackLine({ color }: { color: string }) {
   return (
@@ -869,9 +877,9 @@ if (width < minWidth) {
 
   // Dark robot: preloaded with the HTML (<link rel="preload"> in layout.tsx) and
   // always in the DOM, so it needs no JS warm-up.
-  // Light robot (115 KB) is invisible on first paint because the first theme is
-  // always dark. Warm it once the page is idle: the theme crossfade still feels
-  // instant, but the bytes are kept off the initial mobile load.
+  // Light robot (~18 KB, alpha-matted cut-out) is invisible on first paint
+  // because the first theme is always dark. Warm it once the page is idle: the
+  // theme crossfade still feels instant, but the bytes stay off the first load.
   useEffect(() => {
     let cancelled = false;
     const warm = () => {
@@ -957,7 +965,8 @@ if (width < minWidth) {
           />
           {/* Light-theme robot — mounted on the first light-theme render, or once
               the idle warm-up has cached it. Mounting it unconditionally means the
-              browser fetches 115 KB that is invisible on the default dark theme. */}
+              browser fetches ~18 KB of alpha-matted pixels that are invisible on
+              the default dark theme. */}
           {(theme === "light" || lightRobotReady) && (
             <img
               src={ROBOT_LIGHT_IMG}
@@ -1067,14 +1076,38 @@ function DualMarquee() {
   const stackDouble = [...STACK, ...STACK];
   const attrDouble = [...ATTRIBUTES, ...ATTRIBUTES];
   return (
-    <div className="py-6 overflow-hidden relative" style={{ borderTop: "1px solid rgba(var(--ink-rgb),0.06)", borderBottom: "1px solid rgba(var(--ink-rgb),0.06)" }}>
+    <div
+      className="py-6 overflow-hidden relative"
+      style={{
+        borderTop: "1px solid rgba(var(--ink-rgb),0.06)",
+        borderBottom: "1px solid rgba(var(--ink-rgb),0.06)",
+        transition: "border-color 0.5s ease",
+      }}
+    >
       {/* Row 1: tech stack → left */}
       <div className="mb-3">
         <motion.div className="flex gap-10 whitespace-nowrap" animate={{ x: ["0%", "-50%"] }} transition={{ duration: 30, repeat: Infinity, ease: "linear" }}>
           {stackDouble.map((item, i) => (
             <div key={i} className="flex items-center gap-10 shrink-0">
-              <span className="text-xs tracking-[0.25em] uppercase" style={{ fontFamily: "JetBrains Mono, monospace", color: "rgba(var(--ink-rgb),0.65)" }}>{item}</span>
-              <span style={{ color: "rgba(var(--accent-rgb),0.3)", fontSize: "0.55rem" }}>✦</span>
+              <span
+                className="text-xs tracking-[0.25em] uppercase"
+                style={{
+                  fontFamily: "JetBrains Mono, monospace",
+                  color: "rgba(var(--ink-rgb),0.65)",
+                  transition: "color 0.5s ease",
+                }}
+              >
+                {item}
+              </span>
+              <span
+                style={{
+                  color: "rgba(var(--accent-rgb),0.3)",
+                  fontSize: "0.55rem",
+                  transition: "color 0.5s ease",
+                }}
+              >
+                ✦
+              </span>
             </div>
           ))}
         </motion.div>
@@ -1084,8 +1117,26 @@ function DualMarquee() {
         <motion.div className="flex gap-10 whitespace-nowrap" animate={{ x: ["-50%", "0%"] }} transition={{ duration: 45, repeat: Infinity, ease: "linear" }}>
           {attrDouble.map((item, i) => (
             <div key={i} className="flex items-center gap-10 shrink-0">
-              <span className="text-xs tracking-[0.35em] uppercase font-bold" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "0.55rem", color: "rgba(var(--ink-rgb),0.18)" }}>{item}</span>
-              <span style={{ color: "rgba(200,255,0,0.25)", fontSize: "0.45rem" }}>◆</span>
+              <span
+                className="text-xs tracking-[0.35em] uppercase font-bold"
+                style={{
+                  fontFamily: "Unbounded, sans-serif",
+                  fontSize: "0.55rem",
+                  color: "rgba(var(--ink-rgb),0.18)",
+                  transition: "color 0.5s ease",
+                }}
+              >
+                {item}
+              </span>
+              <span
+                style={{
+                  color: "rgba(200,255,0,0.25)",
+                  fontSize: "0.45rem",
+                  transition: "color 0.5s ease",
+                }}
+              >
+                ◆
+              </span>
             </div>
           ))}
         </motion.div>
@@ -2131,6 +2182,14 @@ const GLOBAL_CSS = `
     90% { opacity: 0.6; }
     to { top: 101%; opacity: 0; }
   }
+  /* Composited twin of the scanline sweep for the preloader: same 100vh travel,
+     but on transform so it never triggers layout while the page is loading. */
+  @keyframes scanlineY {
+    from { transform: translateY(-1vh); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.6; }
+    to { transform: translateY(101vh); opacity: 0; }
+  }
   @keyframes floatUp {
     from { transform: translateY(110vh); opacity: 0; }
     5% { opacity: 1; }
@@ -2204,6 +2263,17 @@ export default function App() {
     document.documentElement.style.backgroundColor = c;
   }, [theme]);
 
+  // The full page now ships in the static HTML, so lock scrolling while the
+  // preloader overlay is up — parity with the previous "no content yet" state.
+  useEffect(() => {
+    if (loaded) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [loaded]);
+
   const toggleTheme = () =>
     setTheme((t) => (t === "dark" ? "light" : "dark"));
 
@@ -2252,23 +2322,22 @@ export default function App() {
         <AnimatePresence>
           {!loaded && <Preloader key="preloader" onDone={() => setLoaded(true)} />}
         </AnimatePresence>
-        <AnimatePresence>
-          {loaded && (
-            <motion.div key="site" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-              <ScrollProgress />
-              <Nav onScrollTo={scrollTo} />
-              <HeroSection />
-              <DualMarquee />
-              <AboutSection />
-              <WorkSection />
-              <SkillsSection />
-              <WhyMeSection />
-              <BentoCapabilities />
-              <ContactSection />
-              <Footer />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Always rendered so the whole page ships in the static HTML: FCP/LCP/SI
+            must not wait for hydration. The preloader overlay above is opaque and
+            its wipe is the reveal, so nothing changes visually. */}
+        <motion.div key="site" initial={false} animate={{ opacity: 1 }}>
+          <ScrollProgress />
+          <Nav onScrollTo={scrollTo} />
+          <HeroSection />
+          <DualMarquee />
+          <AboutSection />
+          <WorkSection />
+          <SkillsSection />
+          <WhyMeSection />
+          <BentoCapabilities />
+          <ContactSection />
+          <Footer />
+        </motion.div>
       </div>
       </ThemeContext.Provider>
     </>
