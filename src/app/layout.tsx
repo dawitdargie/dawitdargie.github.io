@@ -2,17 +2,9 @@ import { Unbounded, Inter, JetBrains_Mono } from "next/font/google";
 import type { Metadata } from "next";
 import "./globals.css";
 
-// Weights are trimmed to what the page actually renders (every Unbounded element
-// carries font-black/900, font-bold/700 or font-light/300; Inter uses 300/400/500;
-// JetBrains Mono uses 400/500). Unbounded 200+400 and Inter 600 were declared but
-// never painted — each one shipped 5-7 extra @font-face subset rules.
-//
-// 900 is listed FIRST on purpose: next/font preloads the first declared weight, and
-// 900 is what the hero heading (the LCP text) is painted in. Before this change the
-// single font preload was Unbounded 200 — a weight the page never renders.
 const unbounded = Unbounded({
   subsets: ["latin"],
-  weight: ["900", "700", "300"],
+  weight: ["900", "700"], // dropped 300
   variable: "--font-unbounded",
   display: "swap",
 });
@@ -22,7 +14,6 @@ const inter = Inter({
   weight: ["300", "400", "500"],
   variable: "--font-inter",
   display: "swap",
-  // Body text isn't the LCP element — don't spend critical-path bandwidth on it.
   preload: false,
 });
 
@@ -31,7 +22,6 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"],
   variable: "--font-jetbrains-mono",
   display: "swap",
-  // Only used for small mono labels — keep it off the critical path.
   preload: false,
 });
 
@@ -73,23 +63,11 @@ export const metadata: Metadata = {
   },
 };
 
-// ─── INLINE BOOT COUNTER ─────────────────────────────────────────────────────
-// Runs at HTML-parse time, long before the ~255 KB of JS is parsed, and drives the
-// exact same counter the Preloader component uses (20ms ticks, random 1..5 steps).
-// That is what stops the number sitting frozen at 000 while React downloads: the
-// count is already climbing. It stops at 99 and hands the live value over —
-// React adopts it, clears the glitch, holds 150ms and runs the 0.9s wipe, so the
-// choreography and every frame of the animation stay owned by the component.
-//
-// FAILSAFE (mobile): if React has not called stop() within BOOT_STUCK_MS after we
-// first hit 99, continue 99→100 in the DOM so the number never sits on "099" while
-// chunks download. React's Preloader (App.tsx) still owns the wipe via its own
-// failsafe; this only keeps the visible counter honest on slow networks.
 const BOOT_COUNTER_JS = `
 (function () {
   var CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
   var timers = [];
-  var BOOT_STUCK_MS = 1800;
+  var BOOT_STUCK_MS = 1100; // was 1800
   var state = { count: 0, glitch: "   ", stopped: false, stop: function () {} };
   window.__pl = state;
   function pad(n) { return n < 10 ? "00" + n : n < 100 ? "0" + n : "" + n; }
@@ -139,7 +117,7 @@ const BOOT_COUNTER_JS = `
       state.count = n;
       num.textContent = pad(n);
       if (bar) bar.style.transform = "scaleX(" + n / 100 + ")";
-    }, 20));
+    }, 12)); // was 20
     state.stop = function () {
       state.stopped = true;
       for (var i = 0; i < timers.length; i++) clearInterval(timers[i]);
@@ -156,24 +134,6 @@ const BOOT_COUNTER_JS = `
 })();
 `;
 
-// ─── INLINE HERO-PANEL MEASURE ───────────────────────────────────────────────
-// The hero image panel's geometry lives in the middle of the "C" of STACK, so it
-// can only be measured once the hero has been laid out and the Unbounded file has
-// swapped in — which used to mean "when React's effect runs", i.e. after ~2s of
-// downloading + evaluating 700 KB of JS. Until then the panel is `display:none`,
-// so the robot (the LCP element) stayed unpainted even though its 18 KB AVIF had
-// been preloaded and was sitting ready.
-//
-// This runs during HTML parsing instead: the identical arithmetic on the identical
-// boxes, one rAF after `document.fonts.ready` (the same signal the React effect
-// re-measures on), and publishes the result on `window.__heroPanel` for
-// HeroSection to adopt as its initial state (see heroPanelBoot in App.tsx).
-// Because React's first render then matches the DOM this script already styled,
-// hydration neither repaints nor corrects anything, and the image is on screen
-// ~0.8s earlier. Every failure mode is a no-op: if the elements are missing or the
-// width is not measurable, nothing is written and React behaves exactly as it did
-// before. A wrong measurement cannot be seen either — the preloader overlay
-// covers the viewport until long after hydration has re-measured.
 const HERO_PANEL_BOOT_JS = `
 (function () {
   function run() {
@@ -239,7 +199,6 @@ export default function RootLayout({
       className={`${unbounded.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <head>
-        {/* Structured Data - Person */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -261,9 +220,6 @@ export default function RootLayout({
           }}
         />
 
-        {/* LCP image: the hero robot. Dark theme is always the first paint, the
-            panel is positioned by the inline script below (HERO_PANEL_BOOT_JS)
-            during HTML parsing, so start the download with the HTML. */}
         <link
           rel="preload"
           as="image"
@@ -272,7 +228,6 @@ export default function RootLayout({
           fetchPriority="high"
         />
 
-        {/* Starts the preloader count at HTML-parse time (see BOOT_COUNTER_JS). */}
         <script dangerouslySetInnerHTML={{ __html: BOOT_COUNTER_JS }} />
       </head>
       <body
@@ -280,10 +235,6 @@ export default function RootLayout({
         className={`${unbounded.className} ${inter.className} ${jetbrainsMono.className}`}
       >
         {children}
-
-        {/* Positions the hero image panel before hydration (see HERO_PANEL_BOOT_JS).
-            A classic script at the end of the body content, so it executes after the
-            hero markup exists but before the app's JS has even been requested. */}
         <script dangerouslySetInnerHTML={{ __html: HERO_PANEL_BOOT_JS }} />
       </body>
     </html>
