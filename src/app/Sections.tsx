@@ -1103,6 +1103,27 @@ function ProjectRow({ project, index, parentVisible, onOpen }: { project: Projec
             >
               {project.short}
             </motion.p>
+
+            {/* View Detail button — full width on mobile, compact on desktop */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              aria-label={`View details for ${project.title}`}
+              data-hover
+              className="flex items-center justify-between gap-2 w-full sm:w-auto px-4 py-3 mt-4 sm:mt-3 rounded-lg shrink-0"
+              style={{
+                border: `1px solid ${hovered ? project.accent + "55" : "rgba(var(--ink-rgb),0.12)"}`,
+                background: hovered ? `${project.accent}10` : "transparent",
+                color: hovered ? project.accent : "rgba(var(--ink-rgb),0.6)",
+                transition: "all 0.35s ease",
+              }}
+            >
+              <span className="text-[0.62rem] tracking-[0.25em] font-bold whitespace-nowrap" style={{ fontFamily: "JetBrains Mono, monospace", transition: "color 0.35s ease" }}>
+                VIEW DETAIL
+              </span>
+              <motion.span animate={{ x: hovered ? 6 : 0, rotate: hovered ? -45 : 0 }} transition={{ duration: 0.3 }} style={{ color: hovered ? project.accent : "rgba(var(--ink-rgb),0.3)", fontSize: "1rem" }}>
+                →
+              </motion.span>
+            </button>
           </div>
         </div>
 
@@ -1113,7 +1134,6 @@ function ProjectRow({ project, index, parentVisible, onOpen }: { project: Projec
               <span key={tag} className="text-xs px-2.5 py-1 tracking-wider" style={{ fontFamily: "JetBrains Mono, monospace", color: hovered ? project.accent : "rgba(var(--ink-rgb),0.28)", border: `1px solid ${hovered ? project.accent + "50" : "rgba(var(--ink-rgb),0.1)"}`, transition: "all 0.4s ease" }}>{tag}</span>
             ))}
           </div>
-          <motion.span animate={{ x: hovered ? 6 : 0, rotate: hovered ? -45 : 0 }} transition={{ duration: 0.3 }} style={{ color: hovered ? project.accent : "rgba(var(--ink-rgb),0.25)", fontSize: "1.2rem", transition: "color 0.4s" }}>→</motion.span>
         </div>
       </div>
     </motion.div>
@@ -1193,7 +1213,7 @@ function ContactSection() {
 
         {/* Response badge */}
         <motion.div initial={{ opacity: 0 }} animate={visible ? { opacity: 1 } : {}} transition={{ delay: 0.6 }} className="flex items-center gap-3 mt-6">
-          <div className="text-xs tracking-[0.2em] px-3 py-1.5" style={{ fontFamily: "JetBrains Mono, monospace", color: "var(--accent-warm)", border: "1px solid rgba(200,255,0,0.25)", fontSize: "0.65rem" }}>
+          <div className="text-xs tracking-[0.2em] px-3 py-1.5" style={{ fontFamily: "JetBrains Mono, monospace", color: "var(--accent)", border: "1px solid rgba(200,255,0,0.25)", fontSize: "0.65rem" }}>
             FAST RESPONSE TIME
           </div>
         </motion.div>
