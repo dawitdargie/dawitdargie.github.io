@@ -10,11 +10,11 @@ html, body {
 }
 ::selection {
   background: var(--accent, #FF3B00);
-  color: var(--bg, #030303);
+  color: var(--bg, #000000);
 }
 ::-moz-selection {
   background: var(--accent, #FF3B00);
-  color: var(--bg, #030303);
+  color: var(--bg, #000000);
 }
 
 /* ─── THEME TOKENS ─────────────────────────────────────────────
@@ -23,10 +23,10 @@ html, body {
 ──────────────────────────────────────────────────────────────── */
 :root,
 [data-theme="dark"] {
-  --bg: #030303;
-  --bg2: #070707;
-  --bg3: #0A0A0A;
-  --bg-rgb: 3, 3, 3;
+  --bg: #000000;
+  --bg2: #000000;
+  --bg3: #000000;
+  --bg-rgb: 0, 0, 0;
   --ink: #EBEBEB;
   --ink-rgb: 235, 235, 235;
   --accent: #FF3B00;

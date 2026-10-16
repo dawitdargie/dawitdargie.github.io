@@ -906,51 +906,38 @@ function HeroSection() {
   }, []);
 
   // Cursor parallax — only runs while mouse is moving
-  useEffect(() => {
-    const mouseDevice = !!window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches;
-    if (!mouseDevice) return;
+  // Cursor parallax — continuous smooth follow
+useEffect(() => {
+  const mouseDevice = !!window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches;
+  if (!mouseDevice) return;
 
-    const move = (e: MouseEvent) => {
-      if (!ref.current) return;
-      lastMove.current = performance.now();
-      const r = ref.current.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
-      const dx = e.clientX - cx;
-      const dy = e.clientY - cy;
-      target.current.x = Math.max(-14, Math.min(14, dx * 0.05));
-      target.current.y = Math.max(-10, Math.min(10, dy * 0.05));
+  const move = (e: MouseEvent) => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    target.current.x = Math.max(-14, Math.min(14, dx * 0.05));
+    target.current.y = Math.max(-10, Math.min(10, dy * 0.05));
+  };
 
-      // restart the loop if it was paused
-      if (!raf.current) {
-        raf.current = requestAnimationFrame(tick);
-      }
-    };
+  const tick = () => {
+    cur.current.x += (target.current.x - cur.current.x) * 0.12;
+    cur.current.y += (target.current.y - cur.current.y) * 0.12;
+    if (parallaxRef.current)
+      parallaxRef.current.style.transform = `translate(${cur.current.x}px, ${cur.current.y}px)`;
+    raf.current = requestAnimationFrame(tick);
+  };
 
-    const tick = () => {
-      // stop when idle
-      if (performance.now() - lastMove.current > 200) {
-        cur.current.x = 0;
-        cur.current.y = 0;
-        if (parallaxRef.current) parallaxRef.current.style.transform = "translate(0px, 0px)";
-        raf.current = 0;
-        return;
-      }
+  window.addEventListener("mousemove", move, { passive: true });
+  raf.current = requestAnimationFrame(tick);
 
-      cur.current.x += (target.current.x - cur.current.x) * 0.12;
-      cur.current.y += (target.current.y - cur.current.y) * 0.12;
-      if (parallaxRef.current)
-        parallaxRef.current.style.transform = `translate(${cur.current.x}px, ${cur.current.y}px)`;
-      raf.current = requestAnimationFrame(tick);
-    };
-
-    window.addEventListener("mousemove", move, { passive: true });
-    return () => {
-      window.removeEventListener("mousemove", move);
-      cancelAnimationFrame(raf.current);
-      raf.current = 0;
-    };
-  }, []);
+  return () => {
+    window.removeEventListener("mousemove", move);
+    cancelAnimationFrame(raf.current);
+  };
+}, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -998,14 +985,14 @@ function HeroSection() {
       <FloatingCode />
 
       <div
-        ref={imgRef}
-        data-hero-panel=""
-        suppressHydrationWarning
-        className="pointer-events-none"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{ ...imgStyle, containerType: "inline-size" }}
-      >
+  ref={imgRef}
+  data-hero-panel=""
+  suppressHydrationWarning
+  className="pointer-events-none"
+  onMouseEnter={() => setHovered(true)}
+  onMouseLeave={() => setHovered(false)}
+  style={{ ...imgStyle, containerType: "inline-size", background: "var(--bg)" }}
+>
         {theme !== "light" && (
           <div
             className="absolute inset-0"
@@ -1219,10 +1206,10 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    const c = theme === "light" ? "#F4F1E8" : "#030303";
-    document.body.style.backgroundColor = c;
-    document.documentElement.style.backgroundColor = c;
-  }, [theme]);
+  const c = theme === "light" ? "#F4F1E8" : "#000000";
+  document.body.style.backgroundColor = c;
+  document.documentElement.style.backgroundColor = c;
+}, [theme]);
 
   useEffect(() => {
     if (loaded) return;

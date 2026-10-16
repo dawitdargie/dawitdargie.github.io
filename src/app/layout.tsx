@@ -4,7 +4,7 @@ import "./globals.css";
 
 const unbounded = Unbounded({
   subsets: ["latin"],
-  weight: ["900", "700"], // dropped 300
+  weight: ["900", "700", "300"],
   variable: "--font-unbounded",
   display: "swap",
 });
