@@ -1109,18 +1109,19 @@ function ProjectRow({ project, index, parentVisible, onOpen }: { project: Projec
               onClick={(e) => { e.stopPropagation(); onOpen(); }}
               aria-label={`View details for ${project.title}`}
               data-hover
-              className="flex items-center justify-between gap-2 w-full sm:w-auto px-4 py-3 mt-4 sm:mt-3 rounded-lg shrink-0"
+              className="project-detail-btn flex items-center justify-between gap-2 w-full sm:w-auto px-4 py-3 mt-4 sm:mt-3 rounded-lg shrink-0"
               style={{
-                border: `1px solid ${hovered ? project.accent + "55" : "rgba(var(--ink-rgb),0.12)"}`,
-                background: hovered ? `${project.accent}10` : "transparent",
-                color: hovered ? project.accent : "rgba(var(--ink-rgb),0.6)",
+                border: `1px solid ${hovered ? project.accent : "#FF3B00"}`,
+                background: "transparent",
+                color: "#ffffff",
+                boxShadow: `0 0 20px ${hovered ? project.accent + "45" : "#FF3B0045"}`,
                 transition: "all 0.35s ease",
               }}
             >
-              <span className="text-[0.62rem] tracking-[0.25em] font-bold whitespace-nowrap" style={{ fontFamily: "JetBrains Mono, monospace", transition: "color 0.35s ease" }}>
+              <span className="text-[0.62rem] tracking-[0.25em] font-black whitespace-nowrap" style={{ fontFamily: "JetBrains Mono, monospace", color: "#ffffff", fontWeight: "900" }}>
                 VIEW DETAIL
               </span>
-              <motion.span animate={{ x: hovered ? 6 : 0, rotate: hovered ? -45 : 0 }} transition={{ duration: 0.3 }} style={{ color: hovered ? project.accent : "rgba(var(--ink-rgb),0.3)", fontSize: "1rem" }}>
+              <motion.span animate={{ x: 6, rotate: -45 }} transition={{ duration: 0.3 }} style={{ color: hovered ? project.accent : "#ffffff", fontSize: "1rem" }}>
                 →
               </motion.span>
             </button>

@@ -48,6 +48,19 @@ html, body {
   --cursor-a: #454136;
   --cursor-b: #8B857A;
 }
+
+/* ─── PROJECTS "VIEW DETAIL" BUTTON — LIGHT THEME ONLY ───────────────
+   Blue border (site accent) + black label/arrow, applied purely via the
+   [data-theme] attribute so no JS state is involved. !important is
+   required because React writes these colours as inline styles. */
+[data-theme="light"] .project-detail-btn {
+  border-color: var(--accent) !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+[data-theme="light"] .project-detail-btn span {
+  color: #000000 !important;
+}
 #home {
     min-height: 0 !important;
     height: auto !important;
