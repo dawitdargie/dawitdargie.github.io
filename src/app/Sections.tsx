@@ -1045,6 +1045,44 @@ function ProjectModal({ project, onClose }: { project: Project; onClose: () => v
 function WorkSection() {
   const { ref, visible } = useInView(0.1);
   const [openProject, setOpenProject] = useState<Project | null>(null);
+  const modalHistoryActive = useRef(false);
+
+  useEffect(() => {
+    const onPopState = () => {
+      // The browser has already consumed the modal's temporary history entry.
+      if (!modalHistoryActive.current) return;
+      modalHistoryActive.current = false;
+      setOpenProject(null);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const openProjectDetails = (project: Project) => {
+    if (modalHistoryActive.current) return;
+
+    window.history.pushState(
+      { ...(window.history.state ?? {}), __projectModal: project.id },
+      "",
+      window.location.href
+    );
+    modalHistoryActive.current = true;
+    setOpenProject(project);
+  };
+
+  const closeProjectDetails = () => {
+    if (!modalHistoryActive.current) {
+      setOpenProject(null);
+      return;
+    }
+
+    // Close immediately for a responsive button/backdrop/Escape interaction,
+    // then remove the temporary entry so the next Back behaves normally.
+    modalHistoryActive.current = false;
+    setOpenProject(null);
+    window.history.back();
+  };
 
   return (
     <section id="work" ref={ref} className="px-8 py-14 md:py-24 relative" style={{ background: "var(--bg)" }}>
@@ -1056,12 +1094,12 @@ function WorkSection() {
           </motion.div>
         </div>
         {PROJECTS.map((project, i) => (
-          <ProjectRow key={project.id} project={project} index={i} parentVisible={visible} onOpen={() => setOpenProject(project)} />
+          <ProjectRow key={project.id} project={project} index={i} parentVisible={visible} onOpen={() => openProjectDetails(project)} />
         ))}
       </div>
 
       <AnimatePresence>
-        {openProject && <ProjectModal key="project-modal" project={openProject} onClose={() => setOpenProject(null)} />}
+        {openProject && <ProjectModal key="project-modal" project={openProject} onClose={closeProjectDetails} />}
       </AnimatePresence>
     </section>
   );
